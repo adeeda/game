@@ -1,0 +1,6 @@
+Name,Prerequisites,Costs,Description,Log Message
+thought,,0 science,It doesn't happen where you can see it.,The thought bubbles up inside you. Then there are . . . More.
+counting,thought,15 science,Use your fingers.,This one is a game changer.
+cooking,thought,30 science,Fire is a wondrous thing.,
+mathematics,counting,100 science,,
+kiln,cooking,200 science,,

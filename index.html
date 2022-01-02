@@ -1,1 +1,62 @@
-<p>test</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+    <title>A simple game</title>
+	<meta name="viewport" content="width=device-width,initial-scale=1"> <!-- forces mobile devices to present correctly -->
+	
+	<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+	<link href="style.css" rel="stylesheet">
+	
+	<!-- Scripts -->
+	<script src="scripts/definitions.js" defer></script>
+	<script src="scripts/classes.js" defer></script>
+	<script src="scripts/functions.js" defer></script>
+	<script src="scripts/main.js" defer></script>
+	
+	<!-- Favicon stuff that I don't understand -->
+	<link rel="apple-touch-icon" sizes="180x180" href="favicon/apple-touch-icon.png">
+	<link rel="icon" type="image/png" sizes="32x32" href="favicon/favicon-32x32.png">
+	<link rel="icon" type="image/png" sizes="16x16" href="favicon/favicon-16x16.png">
+	<!-- <link rel="manifest" href="favicon/site.webmanifest"> -->
+</head>
+<body>
+	<header>
+		<h1>A simple game</h1>
+		<nav></nav>
+	</header>
+	<noscript>
+		<p>This is a game so it sort of requires Javascript.</p>
+	</noscript>
+	<main>
+		<div id="left-pane"></div>
+		<div id="middle-pane">
+			<div id="tab-bar"></div>
+			<div id="tab-pane"></div>
+		</div>	
+		<div id="right-pane"></div>
+	</main>
+	
+	<footer></footer>
+	<div id="about" class="popup">
+		<a href="#" class="close">close</a>
+		<h3>About this game</h3>
+		<p>Hello! This game has no title yet please suggest one I am so terribly bad with names.</p>
+		<p>I was inspired by:</p>
+		<ul>
+			<li><a href="http://kittensgame.com/" target="_blank">Kittens Game</a>, a silly but complex civilization simulator with a great theme.</li>
+			<li><a href="http://adarkroom.doublespeakgames.com/" target="_blank">A Dark Room</a>, an incredible story told extremely simply.</li>
+			<li><a href="https://www.decisionproblem.com/paperclips/" target="_blank">Universal Paperclips</a>, an excellent exploration of its topic and a poignant statement about it and more.</li>
+			<li><a href="https://candybox2.github.io/candybox/" target="_blank">Candy box</a>, possibly the first of its kind and incredibly influential.</li>
+		</ul>
+		<p>plus plenty of other, less related things that I don't have room to mention. I highly recommend playing all of these games if you haven't already.</p>
+	</div>
+	<div id="credits" class="popup">
+		<a href="#" class="close">close</a>
+		<h3>Credits</h3>
+		<p>Just me, so far. Check the about button for some of my inspirations.</p>
+		<p>I would of course love to thank my friends and family.</p>
+	</div>
+</body>
+
+</html>
