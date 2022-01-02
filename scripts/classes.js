@@ -260,7 +260,7 @@ class Building extends Button {
 		if(this.visible) {
 			let ok = true;
 			for (let i=1; i<this.costs.length; i+=2) {
-				if( resources[this.costs[i]].amount < this.costs[i-1]*(this.number+1)^costExponent ) {
+				if( resources[this.costs[i]].amount < this.costs[i-1]*costMultiplier**this.number ) {
 					//cost is not met
 					this.btn.disabled = true;
 					ok = false;

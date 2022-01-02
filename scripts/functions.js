@@ -49,14 +49,17 @@ function initialize () {
 	tabs.main.pane.setAttribute('class','btn-grid');
 	tabs.science = new Tab ('science');
 	
+	//TODO: functionalize this nonsense
+	
 	//try to find the resources file
 	//TODO: sanitize/escape?
 	fetch('design/resources.csv')
 		.then(response => response.text())
 		.then(text => {
-			buildResources(text);
+			buildResources(text.replaceAll('\r',''));
 		})
 		.catch(error => {
+			//console.log(error);
 			//this should only be when I'm locally doing things, so I will upload the file I'm looking for now
 			fileInput = document.createElement('input');
 			fileInput.setAttribute('type','file');
@@ -68,14 +71,14 @@ function initialize () {
 				reader.addEventListener("load", () => {
 					//console.log(reader.result);
 					fileInput.remove();
-					buildResources(reader.result);
+					buildResources(reader.result.replaceAll('\r',''));
 				}, false);
 				reader.readAsText(csvFile);
 			})
 		});
 	
 	function buildResources (csv) {
-		const attributes = csv.split('\r\n');
+		const attributes = csv.split('\n');
 		for (let i=1; i<attributes.length; i++) {
 			attributes[i] = attributes[i].split(',');
 			const name = attributes[i][0];
@@ -88,9 +91,10 @@ function initialize () {
 		fetch('design/science.csv')
 			.then(response => response.text())
 			.then(text => {
-				buildScience(text);
+				buildScience(text.replaceAll('\r',''));
 			})
 			.catch(error => {
+				//console.log(error);
 				//this should only be when I'm locally doing things, so I will upload the file I'm looking for now
 				fileInput = document.createElement('input');
 				fileInput.setAttribute('type','file');
@@ -101,7 +105,7 @@ function initialize () {
 					reader.addEventListener("load", () => {
 						//console.log(reader.result);
 						fileInput.remove();
-						buildScience(reader.result);
+						buildScience(reader.result.replaceAll('\r',''));
 					}, false);
 					reader.readAsText(csvFile);
 				})
@@ -111,7 +115,7 @@ function initialize () {
 	function buildScience (csv) {
 		let saveString = localStorage.getItem('science');
 		if (saveString) {scienceResearched = JSON.parse(saveString);}
-		const attributes = csv.split('\r\n');
+		const attributes = csv.split('\n');
 		for (let i=1; i<attributes.length; i++) {
 			attributes[i] = attributes[i].split(',');
 			const name = attributes[i][0];

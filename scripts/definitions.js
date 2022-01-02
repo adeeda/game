@@ -9,4 +9,4 @@ const rightPane = document.querySelector('#right-pane');
 const about = document.querySelector('#about');
 const credits = document.querySelector('#credits');
 const discoveryFraction = 0.05;
-const costExponent = 1.15;
+const costMultiplier = 1.15;
