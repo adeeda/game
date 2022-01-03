@@ -1,7 +1,7 @@
 function logMessage (message) {
 	let thing = document.createElement('div');
 	thing.setAttribute('class','log-message');
-	thing.textContent = message;
+	updateText(thing,message);
 	rightPane.prepend(thing);
 	return thing;
 }
@@ -9,18 +9,19 @@ function logMessage (message) {
 function createNavBar() {
 	const saveButton = document.createElement('a');
 	saveButton.setAttribute('href','#');
-	saveButton.textContent = 'save';
+	updateText(saveButton,'save');
 	saveButton.addEventListener('click', () => saveGame());
 	
 	const optionsButton = document.createElement('a');
 	//TODO options menu
 	
 	const deleteSave = document.createElement('a');
-	deleteSave.textContent='Delete Save';
+	updateText(deleteSave,'Delete Save');
 	deleteSave.setAttribute('href','#');
 	deleteSave.addEventListener('click', () => {
 		//TODO: Present a warning dialogue first
 		localStorage.clear();
+		//window.location.reload();
 	});
 	
 	navBar.append(saveButton,optionsButton,deleteSave);
@@ -30,13 +31,13 @@ function createNavBar() {
 function createFooter() {
 	const aboutButton = document.createElement('a');
 	aboutButton.setAttribute('href','#');
-	aboutButton.textContent = 'about';
+	updateText(aboutButton,'about');
 	aboutButton.addEventListener('click', () => {about.style.display = 'block';});
 	document.querySelector('#about > .close').addEventListener('click', () => {about.style.display = 'none';});
 	
 	const creditsButton = document.createElement('a');
 	creditsButton.setAttribute('href','#');
-	creditsButton.textContent = 'credits';
+	updateText(creditsButton,'credits');
 	creditsButton.addEventListener('click', () => {credits.style.display = 'block';});
 	document.querySelector('#credits > .close').addEventListener('click', () => {credits.style.display = 'none';});
 	
@@ -49,7 +50,7 @@ function initialize () {
 	tabs.main.pane.setAttribute('class','btn-grid');
 	tabs.science = new Tab ('science');
 	
-	//TODO: functionalize this nonsense
+	//TODO: functionalize the following nonsense
 	
 	//try to find the resources file
 	//TODO: sanitize/escape?
@@ -137,12 +138,12 @@ function initialize () {
 				const foodButton = new Button('food','Gather food',tabs.main.pane,() => resources.food.add());
 				gameVars.progress = 0;
 				logMessage('You are cold, hungry, and lonely.');
-				tabs.main.tab.textContent = 'wilderness';
+				updateText(tabs.main.tab,'wilderness');
 				break;
 			case 1: //regular setup
 				createNavBar();
 				saveTimeout = setTimeout(saveGame,gameVars.saveInterval*1000);
-				resHeader.textContent = 'Resources';
+				updateText(resHeader,'Resources');
 				break;
 		}
 		if(!gameVars.lastTick) {gameVars.lastTick = Date.now();}
@@ -159,4 +160,32 @@ function saveGame () {
 	console.log('Game saved!');
 	clearTimeout(saveTimeout);
 	saveTimeout = setTimeout(saveGame,gameVars.saveInterval*1000);
+}
+
+function createTooltip (daddy) {
+	if (daddy instanceof Element) {
+		let thing = document.createElement('div');
+		thing.setAttribute('class','tooltip');
+		daddy.append(thing);
+		return thing;
+	} else {
+		throw('Not a DOM element dumbass!');
+	}
+}
+
+function updateText (elmnt, txt) { //this is to get around textContent deleting children, and therefore my lovely tooltips.
+	if (elmnt instanceof Element) {
+		let child = elmnt.firstChild;
+		if(child) {
+			if(child instanceof Element) { //then this isn't the text we want to change; add new text node in front
+				elmnt.prepend(document.createTextNode(txt));
+			} else {
+				child.textContent = txt;
+			}
+		} else {
+			elmnt.textContent = txt;
+		}
+	} else {
+		throw('Not a DOM element dumbass!');
+	}
 }

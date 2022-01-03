@@ -1,4 +1,4 @@
-const heading = document.querySelector('h1');
+const header = document.querySelector('h1');
 const pageTitle = document.querySelector('title');
 const navBar = document.querySelector('nav');
 const footer = document.querySelector('footer');

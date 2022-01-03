@@ -1,6 +1,7 @@
 :root { /* these are css variables */
 	--dark-color: #C9C1CC;
 	--light-color: #E6E3E7;
+	--highlight: #c0aac8;
 	--mobile-res-cutoff: 600px;
 }
 
@@ -59,16 +60,24 @@ a:hover {
 	font-weight: bold;
 }
 
+#tab-bar {
+	padding: 0.4vw;
+}
 #tab-bar > a {
-	margin-right: 0.5vw;
+	margin-right: 0.4vw;
 	display: inline-block;
+	border-left: 0.2vw solid var(--dark-color);
+	padding-left: 0.4vw;
 }
 #tab-bar > a.active {
 	text-decoration-line: underline;
 	font-weight: bold;
 }
 #tab-bar > a:first-letter {
-	text-transform: uppercase
+	text-transform: uppercase;
+}
+#tab-bar > a:first-child {
+    border-left: none;
 }
 
 #tab-pane {
@@ -106,7 +115,10 @@ a:hover {
 button {
 	font: inherit;
 	padding: 0;
-	text-transform: capitalize;
+	/* text-transform: capitalize; */
+}
+button:first-letter {
+	text-transform: uppercase;
 }
 button > div {
 	float: right;
@@ -115,9 +127,20 @@ button > div {
 	margin-right: 0.3vw;
 }
 
+/* TODO: Fix tooltip position */
 .tooltip {
+	position: absolute;
 	display: none;
-	/* TODO */
+	pointer-events: none;
+	
+	background: var(--highlight);
+	color: black;
+	padding: 0.6vw;
+	border-radius: 0.5vw;
+	box-shadow: 0.2vw 0.2vw 0.1vw silver;
+}
+*:hover > .tooltip {
+	display: inline-block;
 }
 
 .popup { /* pop-up menus */

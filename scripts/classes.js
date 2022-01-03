@@ -17,6 +17,8 @@ class Resource {
 		this.txtCap = document.createElement('div');
 		this.txtRate = document.createElement('div');
 		this.bar.append(this.txtName,this.txtAmount,this.txtCap,this.txtRate);
+		
+		this.tooltip = createTooltip(this.txtRate);
 	}
 	
 	get displayName () {
@@ -70,13 +72,16 @@ class Resource {
 	
 	get displayRPS () {
 		//TODO
-		//return `${this.rps} /s`;
-		if(this.rps > 0) {
-			return '^';
-		} else if (this.rps < 0) {
-			return 'v';
+		if(science.mathematics.researched) {
+			return `${this.rps} /s`;
 		} else {
-			return '';
+			if(this.rps > 0) {
+				return '^';
+			} else if (this.rps < 0) {
+				return 'v';
+			} else {
+				return '';
+			}
 		}
 	}
 	
@@ -152,10 +157,17 @@ class Resource {
 			//TODO: Add conditionals for science
 			//TODO: dumbify
 			//(see new functions above for display)
-			this.txtName.textContent = `${this.displayName}:`;
-			this.txtAmount.textContent = `${this.displayAmount(this.amount)}`;
-			//if(this.cap != Infinity) {this.txtCap.textContent = `/ ${this.displayAmount(this.cap)}`;}
-			if( this.rps > 0 || (this.amount > 0 && this.rps) ) {this.txtRate.textContent = this.displayRPS;} else {this.txtRate.textContent="";}
+			updateText(this.txtName,`${this.displayName}:`);
+			updateText(this.txtAmount,`${this.displayAmount(this.amount)}`);
+			//if(this.cap != Infinity) {updateText(this.txtCap,`/ ${this.displayAmount(this.cap)}`);}
+			if( this.rps > 0 || (this.amount > 0 && this.rps) ) {
+				updateText(this.txtRate,this.displayRPS);
+				updateText(this.tooltip,`${(this.rps > 0) ? 'going up' : 'going down'}`); //TODO: dumbify()
+				this.tooltip.style.opacity = 1;
+			} else {
+				updateText(this.txtRate,"");
+				this.tooltip.style.opacity = 0;
+			}
 		}
 	}
 	
@@ -188,7 +200,7 @@ class Tab {
 		
 		this.tab = document.createElement('a');
 		this.tab.setAttribute('href','#');
-		this.tab.textContent=name;
+		updateText(this.tab,name);
 		if(!visible) {this.tab.style.display = 'none';}
 		tabBar.append(this.tab);
 		this.pane = document.createElement('div');
@@ -212,7 +224,7 @@ class Button {
 	constructor (name, description, pane, onClick) {
 		this.name = name;
 		this.btn = document.createElement('button');
-		this.btn.textContent = description;
+		updateText(this.btn,description);
 		pane.append(this.btn);
 		this.btn.addEventListener('click',onClick);
 	}
@@ -239,7 +251,7 @@ class Building extends Button {
 		this.number = 0;
 		
 		// this.test = document.createElement('div');
-		// this.test.textContent = '+/-';
+		// updateText(this.test,'+/-');
 		// this.btn.append(this.test);
 		
 		this.visible = false;
@@ -292,50 +304,83 @@ class Science extends Button {
 	constructor (name, prereqs, costs, description, message) {
 		super(name, name, tabs.science.pane, () => {
 			//when button is pressed
-			this.researched = true;
-			scienceResearched[this.name] = true; //This is for an easy savestate
-			this.visible = false;
-			this.btn.style.display = 'none';
-			if(message) {
-				logMessage(message);
+			//actually consume the resources
+			let ok = true;
+			for (let i=1; i<this.costs.length; i+=2) {
+				if( !resources[this.costs[i]].consume(this.costs[i-1]) ) {
+					//somehow fail
+					logMessage(`You don't have the ${resources[this.costs[i]].displayName} for that. Something went wrong.`);
+					ok = false;
+					break;
+				}
+			}
+			if (ok) {
+				this.researched = true;
+				scienceResearched[this.name] = true; //This is for an easy savestate
+				this.visible = false;
+				this.btn.style.display = 'none';
+				if(message) {
+					logMessage(message);
+				}
 			}
 		});
 		this.researched = false;
 		this.visible = false;
 		this.btn.style.display = 'none';
+		
 		if(prereqs) {this.prereqs = prereqs.split(' ');} else {this.prereqs = false;};
 		this.costs = costs.split(' ');
+		this.description = description;
+		
+		if(description) {
+			this.tooltip = createTooltip(this.btn);
+		}
 	}
 	
 	update () {
-		if(!this.visible && !this.researched) {
-			if(!this.prereqs) {
-				this.unlock();
-			} else { //check prereqs
+		if(!this.researched) {
+			if(!this.visible) {
+				if(!this.prereqs) {
+					this.unlock();
+				} else { //check prereqs
+					let ok = true;
+					for (let i=0; i<this.prereqs.length; i++) {
+						if(!science[this.prereqs[i]].researched) {
+							ok = false; //if any prereqs are not met
+							break;
+						}
+					}
+					if(ok) {this.unlock();}
+				}
+			}
+			if(this.visible) {
 				let ok = true;
-				for (let i=0; i<this.prereqs.length; i++) {
-					if(!science[this.prereqs[i]].researched) {
-						ok = false; //if any prereqs are not met
-						break;
+				if(this.prereqs) {
+					for (let i=1; i<this.costs.length; i+=2) {
+						if( resources[this.costs[i]].amount < this.costs[i-1] ) {
+							//cost is not met
+							this.btn.disabled = true;
+							ok = false;
+							break;
+						}
 					}
 				}
-				if(ok) {this.unlock();}
-			}
-		}
-		if(this.visible) {
-			let ok = true;
-			if(this.prereqs) {
-				for (let i=1; i<this.costs.length; i+=2) {
-					if( resources[this.costs[i]].amount < this.costs[i-1] ) {
-						//cost is not met
-						this.btn.disabled = true;
-						ok = false;
-						break;
-					}
+				if (ok) {this.btn.disabled = false;}
+				
+				//TODO: Might not need to update this every frame, but where do I update it?
+				if(this.tooltip) {
+					updateText(this.tooltip,`${this.description}\n${this.displayCosts}`);
 				}
 			}
-			if (ok) {this.btn.disabled = false;}
 		}
+	}
+	
+	get displayCosts () {
+		let text = 'Cost:';
+		for (let i=1; i<this.costs.length; i+=2) {
+			text += ` ${resources[this.costs[i]].displayAmount(this.costs[i-1])} ${resources[this.costs[i]].displayName}`;
+		}
+		return text;
 	}
 	
 	unlock () {

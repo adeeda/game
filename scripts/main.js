@@ -12,7 +12,7 @@ if(gameVars) {
 	}
 }
 
-heading.textContent = pageTitle.textContent = gameVars.title;
+header.textContent = pageTitle.textContent = gameVars.title;
 const resHeader = document.createElement('h2');
 leftPane.append(resHeader);
 
@@ -38,7 +38,7 @@ function gameLoop() {
 				case 0: //finding food
 					if(resources.food.amount > 0) {
 						logMessage('You find something edible and immediately start consuming it.');
-						resHeader.textContent = 'Things';
+						updateText(resHeader,'Things');
 						resources.food.rps -= 0.3;
 						gameVars.progress++;
 					}
@@ -66,20 +66,22 @@ function gameLoop() {
 										resources.food.consume(2);
 										logMessage('You light a warm fire, as your parents showed you. It is vulnerable to the elements.');
 										gameVars.progress++;
-										tabs.main.tab.textContent = 'a fire';
+										updateText(tabs.main.tab,'a fire');
 										fireExists = true;
+										lightFire.btn.disabled = true;
 										var fireTimeout = setTimeout(() => {
 											clearTimeout(fireTimeout);
 											if(gameVars.progress <= 5) {
 												logMessage('The fire has gone out.');
 												gameVars.progress--;
-												tabs.main.tab.textContent = 'wilderness';
+												updateText(tabs.main.tab,'wilderness');
 												gameVars.speedrun = false;
 												fireExists = false;
+												lightFire.btn.disabled = false;
 											}
 										}, 1000*30);
 										if(!fireButton) {
-											const digFoundation = new Button ('dig','Shape the ground',tabs.main.pane, () => {
+											const digFoundation = new Button ('dig','Dig a foundation',tabs.main.pane, () => {
 												if(resources.food.amount > 3) {
 													if(fireExists) {
 														resources.food.consume(0.3);
@@ -115,40 +117,37 @@ function gameLoop() {
 								//logMessage('You already have a shelter.');
 							} else if(resources.food.amount < 5) {
 								logMessage('You are too hungry to build a shelter.');
-							} else if(gameVars.progress > 4) {
-								if(resources.wood.amount > 15) {
-									if(resources.earth.consume(25)) {
-										resources.food.consume(3);
-										resources.wood.consume(15);
-										gameVars.progress++;
-										logMessage('The fire crackles in the comfort of your new structure.');
-										tabs.main.tab.textContent = 'a shelter';
-										shelterExists = true;
-										resources.wood.rps -= 0.1;
-										var visitor = setInterval( () => {
-											if(resources.wood.amount < 5 || resources.food.amount < 10) {
-												let txt = 'You hear a rustling nearby. When you look, nothing is there.';
-												if(resources.wood.amount < 5) {txt += ' Your tinder is getting low.';};
-												if(resources.food.amount < 10) {txt += ' You need more food.';}
-												gameVars.speedrun = false;
-												logMessage(txt);
-											} else {
-												logMessage('A haggard stranger approaches you warily. You motion them inside.');
-												gameVars.progress++;
-												resources.population.cap++;
-												resources.population.add();
-												resources.food.rps -= 0.3;
-												clearInterval(visitor);
-											}
-										},1000*((gameVars.speedrun) ? 30 : 60));
-									} else {
-										logMessage('You need to dig more.');
-									}
-								} else {
-									logMessage('You need more branches.');
-								}
-							} else {
+							} else if(gameVars.progress < 5) {
 								logMessage('You are too cold to build a shelter.');
+							} else if(resources.wood.amount < 15) {
+								logMessage('You need more branches.');
+							} else if(resources.earth.consume(25)) {
+								resources.food.consume(3);
+								resources.wood.consume(15);
+								gameVars.progress++;
+								logMessage('The fire crackles in the comfort of your new structure.');
+								updateText(tabs.main.tab,'a shelter');
+								shelterExists = true;
+								buildShelter.btn.style.display = 'none';
+								resources.wood.rps -= 0.1;
+								var visitor = setInterval( () => {
+									if(resources.wood.amount < 5 || resources.food.amount < 10) {
+										let txt = 'You hear a rustling nearby. When you look, nothing is there.';
+										if(resources.wood.amount < 5) {txt += ' Your tinder is getting low.';};
+										if(resources.food.amount < 10) {txt += ' You need more food.';}
+										gameVars.speedrun = false;
+										logMessage(txt);
+									} else {
+										logMessage('A haggard stranger approaches warily. You motion them inside.');
+										gameVars.progress++;
+										resources.population.cap++;
+										resources.population.add();
+										resources.food.rps -= 0.3;
+										clearInterval(visitor);
+									}
+								},1000*((gameVars.speedrun) ? 30 : 60));
+							} else {
+								logMessage('You need to dig more.');
 							}
 						});
 					}
@@ -166,7 +165,7 @@ function gameLoop() {
 							gameVars.progress++;
 							logMessage('Your friend looks better, and offers help. You find a moment to rest, and. . . ? ? ? ?');
 							resources.food.rps += 0.3;
-							tabs.science.tab.textContent = '? ? ? ?';
+							updateText(tabs.science.tab,'? ? ? ?');
 							tabs.science.unlock();
 						}
 					},1000*((gameVars.speedrun) ? 30 : 60));
@@ -174,8 +173,8 @@ function gameLoop() {
 					break;
 				case 9:
 					if (science.thought.researched) {
-						tabs.science.tab.textContent = 'Ideas';
-						tabs.main.tab.textContent = 'Home';
+						updateText(tabs.science.tab,'Ideas');
+						updateText(tabs.main.tab,'Home');
 						resources.science.add();
 						resources.science.rps = 0.1;
 						gameVars.era++;
