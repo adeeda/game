@@ -1,11 +1,16 @@
 class Resource {
 	constructor (name, cap=Infinity, dumbName="") {
 		this.name = name;
-		this.cap = cap;
+		this.cap = parseInt(cap,10);
 		if(dumbName) {this.dumbName = dumbName} else {this.dumbName=name;};
 		
 		this.amount = 0;
-		this.rps=0;
+		this.income = 0;
+		this.drain = 0;
+		this.multiplier = 1;
+		this.multipliers = [];
+		this.sources = [];
+		this.sinks = [];
 		this.active = false;
 		
 		this.bar = document.createElement('div');
@@ -22,79 +27,43 @@ class Resource {
 	}
 	
 	get displayName () {
-		//if good science, return name, else
-		//TODO
-		return this.dumbName;
+		return (science.language.researched) ? this.name : this.dumbName;
 	}
 	
-	displayAmount (number) {
-		//TODO: move out of here and to functions.js
-		if(science.mathematics.researched) {
-			return Math.trunc(number);
-		} else if(science.counting.researched) {
-			if(number <= 16) {
-				return Math.trunc(number);
-			} else if(number <= 25) {
-				return 'a lot';
-			} else  {
-				return 'enough';
-			}
-		} else {
-			if(this.name === 'population') {
-				if(number === 0) {
-					return 'none';
-				} else if(number === 1) {
-					return 'one';
-				} else if(number <= 4) {
-					return 'a few';
-				} else if(number <= 9) {
-					return 'some';
-				} else if(number <= 25) {
-					return 'many';
-				} else {
-					return 'too many';
-				}
-			} else {
-				if(number === 0) {
-					return 'none';
-				} else if(number <= 4) {
-					return 'a little';
-				} else if(number <= 9) {
-					return 'some';
-				} else if(number <= 25) {
-					return 'a lot';
-				} else {
-					return 'enough';
-				}
-			}
-		}
+	get rps () {
+		return this.income * this.multiplier - this.drain;
 	}
 	
 	get displayRPS () {
-		//TODO
-		if(science.mathematics.researched) {
-			return `${this.rps} /s`;
+		let rps = this.rps;
+		if( (rps > 0 && this.amount === this.cap) || (rps < 0 && this.amount === 0) ) {
+			rps = 0;
+		}
+		if(science.mathematics.researched) { //TODO: science.time.researched
+			return `${rps} /s`;
 		} else {
-			if(this.rps > 0) {
+			updateText(this.tooltip,`${(rps > 0) ? 'going up' : 'going down'}`);
+			if(rps > 0) {
+				this.tooltip.style.opacity = 1;
 				return '^';
-			} else if (this.rps < 0) {
+			} else if (rps < 0) {
+				this.tooltip.style.opacity = 1;
 				return 'v';
 			} else {
+				this.tooltip.style.opacity = 0;
 				return '';
 			}
 		}
+		
 	}
 	
 	add (plus=1) {
 		if (this.amount + plus > this.cap) {
 			this.amount = this.cap;
-			this.update();
-			return false;
 		} else {
 			this.amount += plus;
-			this.update();
-			return true;
 		}
+		this.update();
 	}
 	
 	consume (minus=1) {
@@ -107,23 +76,37 @@ class Resource {
 		}
 	}
 	
-	addSource (plusRps, mechanism) {
-		//add to rps
-		//stop mechanism (temporarily?) if limit reached
-		this.update();
+	// FUNCTIONS CALLED BY BUILDINGS
+	addSource (plusRps, number, mechanism, unstoppable=false) {
+		this.income += plusRps*number;
+		//TODO: Update if mechanism is already here
+		this.sources.push(plusRps, number, mechanism, unstoppable);
 	}
-	
-	removeSource (plusRps, mechanism) {
-		
+	removeSource (plusRps, number, mechanism) {
+		this.income -= plusRps*number;
+		//TODO: search for matching mechanism, reduce by number and appropriate rps
 	}
-	
-	addSink (minusRps, mechanism) {
+	addSink (minusRps, number, mechanism, unstoppable=false) {
 		//manage a list of mechanisms to cut off when out of resource
+		this.drain += minusRps*number;
+		//TODO: Update if mechanism is already here
+		this.sinks.push(minusRps,number,mechanism,unstoppable); //push adds to the end of the array.
 	}
-	
-	removeSink (minusRps, mechanism) {
-		
+	removeSink (minusRps, number, mechanism) {
+		//called by mechanisms
+		//TODO: search for matching mechanism, reduce by number and appropriate rps
+		this.drain -= minusRps*number;
 	}
+	addMultiplier (multiplier, mechanism) {
+		this.multiplier *= multiplier;
+		//TODO: Update if mechanism is already here
+		this.multipliers.push(multiplier,mechanism);
+	}
+	removeMultiplier (multiplier, mechanism) {
+		this.multiplier /= multiplier;
+		//TODO: search for matching mechanism, reduce by multiplier
+	}
+	// END FUNCTIONS CALLED BY BUILDINGS
 	
 	tick (time) {
 		let change = this.rps * time;
@@ -136,61 +119,56 @@ class Resource {
 		} else {
 			//TODO
 			//cut off the newest mechanisms until rps is greater than 0;
+			//buildings[name].decrease();
 			//by calling tick(time) again!!!!
 			//if no more mechanisms, then final result is just stay at 0:
 			this.amount = 0;
 		}
+		
+		//TODO: stop mechanism (temporarily?) if limit reached
 	}
 	
 	getNextBreakpoint () { //TODO: call for an adjustment on next tick? :O  if the tick is equal to this one! Alternatively: just call getNextBreakpoint on the tick, and if they're the same, then do the adjustment.
-		let time;
 		if(this.rps > 0) {
 			return (this.cap - this.amount)/this.rps;
 		} else if(this.rps < 0) {
 			return this.amount/this.rps;
+		} else {
+			return Infinity;
 		}
 	}
 	
 	update () {
-		if(this.active || this.amount > 0) {
+		if(this.active || this.amount >= 1) {
 			this.active = true;
-			//TODO: Add conditionals for science
-			//TODO: dumbify
-			//(see new functions above for display)
 			updateText(this.txtName,`${this.displayName}:`);
-			updateText(this.txtAmount,`${this.displayAmount(this.amount)}`);
-			//if(this.cap != Infinity) {updateText(this.txtCap,`/ ${this.displayAmount(this.cap)}`);}
-			if( this.rps > 0 || (this.amount > 0 && this.rps) ) {
-				updateText(this.txtRate,this.displayRPS);
-				updateText(this.tooltip,`${(this.rps > 0) ? 'going up' : 'going down'}`); //TODO: dumbify()
-				this.tooltip.style.opacity = 1;
-			} else {
-				updateText(this.txtRate,"");
-				this.tooltip.style.opacity = 0;
-			}
+			updateText(this.txtAmount,`${displayNumber(this.amount,this.name === 'population' ? 'discrete' : '')}`);
+			//TODO: capacity science conditional
+			//if(this.cap != Infinity) {updateText(this.txtCap,`/ ${displayNumber(this.cap)}`);}
+			
+			updateText(this.txtRate,this.displayRPS);
+			//TODO: dumbify()
+			//logistics allows the view of all the sources and multipliers
 		}
 	}
 	
 	save () {
-		//TODO: sinks and sources
-		let saveString = `${this.amount},${this.rps}`;
+		let saveString = `${this.amount}`;
 		localStorage.setItem(this.name,saveString);
 	}
 	
 	load () {
-		//TODO: sinks and sources
+		//TODO: sources?
 		let saveString = localStorage.getItem(this.name);
 		if(saveString) {
-			let things = saveString.split(',');
-			this.amount = parseInt(things[0],10);
-			this.rps = parseInt(things[1],10);
+			//let things = saveString.split(',');
+			this.amount = parseInt(saveString,10);
 			this.update();
 			return true;
 		} else {
 			return false;
 		}
 	}
-		
 }
 
 class Tab {
@@ -199,7 +177,6 @@ class Tab {
 		this.visible = visible;
 		
 		this.tab = document.createElement('a');
-		this.tab.setAttribute('href','#');
 		updateText(this.tab,name);
 		if(!visible) {this.tab.style.display = 'none';}
 		tabBar.append(this.tab);
@@ -231,41 +208,76 @@ class Button {
 }
 
 class Building extends Button {
-	constructor (name, costs, caps, multipliers, outs, ins, upgrades) {
+	constructor (name, costs, caps, multipliers, outs, ins, upgrades, dumbName="", description) {
 		super(name, name, tabs.main.pane, () => {
-			//TODO: build a new Building
+			//on click
+			for (let i=1; i<this.costs.length; i+=2) {
+				resources[this.costs[i]].consume(this.costs[i-1]*costMultiplier**this.number);
+			}
+			this.increase(1,true);
 		});
 		
-		this.costs = costs.split(' ');
-		if(caps) {this.caps = caps.split(' ');} else {this.caps = false;} //TODO
-		if(multipliers) {this.multipliers = multipliers.split(' ');} else {this.multipliers = false;} //TODO
-		if(outs) {this.outs = outs.split(' ');} else {this.outs = false;} //TODO
+		if(dumbName) {this.dumbName = dumbName} else {this.dumbName=name;};
+		this.description = description;
+		this.costs = costs.split(';');
+		
+		if(caps) {this.caps = caps.split(';');} else {this.caps = false;}
+		if(multipliers) {this.multipliers = multipliers.split(';');} else {this.multipliers = false;} //TODO
+		if(outs) {this.outs = outs.split(';');} else {this.outs = false;} //TODO
 		if(ins) {
 			//TODO: if any ins, add +/- mini buttons
-			this.ins = ins.split(' ');
+			this.ins = ins.split(';');
 		} else {
 			this.ins = false;
 		}
-		if(upgrades) {this.upgrades = upgrades.split(' ');} else {this.upgrades = false;} //TODO
+		if(upgrades) {this.upgrades = upgrades.split(';');} else {this.upgrades = false;} //TODO
 		
 		this.number = 0;
+		this.activeNumber = 0;
 		
 		// this.test = document.createElement('div');
 		// updateText(this.test,'+/-');
 		// this.btn.append(this.test);
+		// button.addEventListener("click", event => {
+			// console.log("Handler for button.");
+			// event.stopPropagation(); //<-- This is the one!
+		  // });
 		
 		this.visible = false;
 		this.btn.style.display = 'none';
+		this.btn.setAttribute('class','building');
+		
+		this.tooltip = createTooltip(this.btn);
+	}
+	
+	get displayName () {
+		//TODO
+		//if good science return this.name else
+		return this.dumbName;
+	}
+	
+	get displayCosts () {
+		let text = 'Cost:';
+		for (let i=1; i<this.costs.length; i+=2) {
+			text += ` ${displayNumber(this.costs[i-1]*costMultiplier**this.number,'of')} ${resources[this.costs[i]].displayName}`;
+			text += (i===this.costs.length-1) ? '' : ',' ;
+		}
+		return text;
 	}
 	
 	update() {
 		if(!this.visible) {
+			let show = true;
 			for( let i=1; i<this.costs.length; i+=2 ) {
-				if( resources[this.costs[i]].amount > this.costs[i-1] * discoveryFraction) {
-					this.visible = true;
-					this.btn.style.display = 'block';
+				if( resources[this.costs[i]].amount < this.costs[i-1] * discoveryFraction) {
+					show = false;
 					break;
 				}
+			}
+			if(show) {
+				this.visible = true;
+				this.btn.style.display = 'block';
+				updateText(this.btn,`${this.displayName}`);
 			}
 		}
 		
@@ -280,23 +292,95 @@ class Building extends Button {
 				}
 			}
 			if (ok) {this.btn.disabled = false;}
+			updateText(this.tooltip,`${this.description} ${this.displayCosts}`);
 		}
 	}
 	
-	addDistributor (to, rate) {
-		
+	increase (by=1, isCreating=false) { //Increases the number of active buildings
+		let ok = true;
+		let actual = by;
+		if(isCreating) {
+			this.number += by;
+			this.activeNumber += by;
+		} else {
+			if(this.activeNumber + by <= this.number) {
+				this.activeNumber += by;
+			} else if(this.number !== this.activeNumber) {
+				actual = this.number - this.activeNumber;
+				this.activeNumber = this.number;
+			} else {
+				ok = false;
+			}
+		}
+		if(ok) {
+			updateText(this.btn,`${this.displayName}` + ((this.activeNumber < this.number) ? `(${this.activeNumber}/${this.number})` : `(${this.number})`));
+			if(this.caps) {
+				for (let i=1; i<this.caps.length; i+=2) {
+					resources[this.caps[i]].cap += this.caps[i-1]*by;
+				}
+			}
+			if(this.multipliers) {
+				for (let i=1; i<this.multipliers.length; i+=2) {
+					resources[this.multipliers[i]].addMultiplier(this.multipliers[i-1]*by,this);
+				}
+			}
+			if(this.outs) {
+				for (let i=1; i<this.outs.length; i+=2) {
+					resources[this.outs[i]].addSource(this.outs[i-1],by,this);
+				}
+			}
+			if(this.ins) {
+				for (let i=1; i<this.ins.length; i+=2) {
+					resources[this.ins[i]].addSink(this.ins[i-1],by,this);
+				}
+			}
+		}
 	}
 	
-	addCollector (from, rate) {
+	decrease (by) { //Decreases the number of active buildings
+		let actual = (this.activeNumber >= by) ? by : this.activeNumber; //whichever is smaller? wait should I just use... min?
 		
+		if(this.caps) {
+			for (let i=1; i<this.caps.length; i+=2) {
+				resources[this.caps[i]].cap -= this.caps[i-1]*actual;
+			}
+		}
+		if(this.multipliers) {
+			for (let i=1; i<this.multipliers.length; i+=2) {
+				resources[this.multipliers[i]].removeMultiplier(this.multipliers[i-1]*actual,this);
+			}
+		}
+		if(this.outs) {
+			for (let i=1; i<this.outs.length; i+=2) {
+				resources[this.outs[i]].removeSource(this.outs[i-1],actual,this);
+			}
+		}
+		if(this.ins) {
+			for (let i=1; i<this.ins.length; i+=2) {
+				resources[this.ins[i]].removeSink(this.ins[i-1],actual,this);
+			}
+		}
+		
+		this.activeNumber -= actual;
+		updateText(this.btn,`${this.displayName}` + ((this.activeNumber < this.number) ? `(${this.activeNumber}/${this.number})` : `(${this.number})`));
 	}
 	
 	save() {
-		this.number;
+		let saveString = `${this.number},${this.activeNumber}`;
+		localStorage.setItem(this.name,saveString);
 	}
 	
 	load() {
-		
+		let saveString = localStorage.getItem(this.name);
+		if(saveString) {
+			let things = saveString.split(',');
+			this.number = parseInt(things[0],10);
+			this.increase(parseInt(things[1],10));
+			this.update();
+			return true;
+		} else {
+			return false;
+		}
 	}
 }
 
@@ -328,8 +412,8 @@ class Science extends Button {
 		this.visible = false;
 		this.btn.style.display = 'none';
 		
-		if(prereqs) {this.prereqs = prereqs.split(' ');} else {this.prereqs = false;};
-		this.costs = costs.split(' ');
+		if(prereqs) {this.prereqs = prereqs.split(';');} else {this.prereqs = false;};
+		this.costs = costs.split(';');
 		this.description = description;
 		
 		if(description) {
@@ -355,21 +439,19 @@ class Science extends Button {
 			}
 			if(this.visible) {
 				let ok = true;
-				if(this.prereqs) {
-					for (let i=1; i<this.costs.length; i+=2) {
-						if( resources[this.costs[i]].amount < this.costs[i-1] ) {
-							//cost is not met
-							this.btn.disabled = true;
-							ok = false;
-							break;
-						}
+				for (let i=1; i<this.costs.length; i+=2) {
+					if( resources[this.costs[i]].amount < this.costs[i-1] ) {
+						//cost is not met
+						this.btn.disabled = true;
+						ok = false;
+						break;
 					}
 				}
 				if (ok) {this.btn.disabled = false;}
 				
 				//TODO: Might not need to update this every frame, but where do I update it?
 				if(this.tooltip) {
-					updateText(this.tooltip,`${this.description}\n${this.displayCosts}`);
+					updateText(this.tooltip,`${this.description} ${this.displayCosts}`);
 				}
 			}
 		}
@@ -378,7 +460,7 @@ class Science extends Button {
 	get displayCosts () {
 		let text = 'Cost:';
 		for (let i=1; i<this.costs.length; i+=2) {
-			text += ` ${resources[this.costs[i]].displayAmount(this.costs[i-1])} ${resources[this.costs[i]].displayName}`;
+			text += ` ${displayNumber(this.costs[i-1],'of')} ${resources[this.costs[i]].displayName}`;
 		}
 		return text;
 	}
@@ -393,3 +475,4 @@ class Science extends Button {
 		this.visible = false;
 	}
 }
+

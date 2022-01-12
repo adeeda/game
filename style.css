@@ -6,7 +6,7 @@
 }
 
 html {
-	font-size: calc(0.4rem + 0.6vw);
+	font-size: calc(0.7rem + 0.1vw);
 	font-family: "Open Sans", sans-serif;
 	background-color: var(--light-color);
 	box-sizing: border-box;
@@ -48,6 +48,9 @@ h1, h2 {
 	display: inline;
 }
 
+a {
+	cursor: pointer;
+}
 a:link {
 	color: black;
 	text-decoration-line: none;
@@ -89,7 +92,6 @@ a:hover {
 .btn-grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: 1vw;
 }
 
 .resource { /* each line in the resources pane */
@@ -105,7 +107,6 @@ a:hover {
 
 .log-message {
 	margin-top: 0.3vw;
-	font-size: 90%;
 }
 .log-message:first-child {
 	font-weight: bold;
@@ -115,6 +116,8 @@ a:hover {
 button {
 	font: inherit;
 	padding: 0;
+	min-width: 10em;
+	margin: 0.5em;
 	/* text-transform: capitalize; */
 }
 button:first-letter {
@@ -126,6 +129,9 @@ button > div {
 	padding-left: 0.3vw;
 	margin-right: 0.3vw;
 }
+button.building {
+	height: 3em;
+}
 
 /* TODO: Fix tooltip position */
 .tooltip {
@@ -136,6 +142,7 @@ button > div {
 	background: var(--highlight);
 	color: black;
 	padding: 0.6vw;
+	max-width: 35vw;
 	border-radius: 0.5vw;
 	box-shadow: 0.2vw 0.2vw 0.1vw silver;
 }
@@ -192,5 +199,8 @@ button > div {
 	.popup {
 		width: 50%;
 		left: 25vw;
+	}
+	.tooltip {
+		max-width: 20vw;
 	}
 }

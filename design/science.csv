@@ -1,6 +1,12 @@
 Name,Prerequisites,Costs,Description,Log Message
-thought,,0 science,,The thought bubbles up inside you. Then there are . . . More.
-counting,thought,15 science,Use your fingers.,This one is a game changer.
-cooking,thought,30 science,Fire is a wondrous thing.,
-mathematics,counting,100 science,,
-kiln,cooking,200 science,,
+thought,,0;science,,The thought bubbles up inside you. Then there are . . . More.
+knapping,thought,5;science,Shaping stones with other stones.,A variety of stone tools expand your options.
+division of labor,knapping,10;science,I do this and you do that.,
+counting,thought,15;science,Use your fingers.,Counting. This one is a game changer.
+symbols,counting,25;science,This thing here represents that thing.,
+cooking,thought,30;science,Fire is delicious.,
+mathematics,counting,100;science,,
+bricks,cooking,200;science,,
+art,symbols,100;culture,,
+language,symbols,100;science;100;culture,,
+logistics,mathematics,500;science,,

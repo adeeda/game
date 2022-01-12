@@ -19,9 +19,12 @@ leftPane.append(resHeader);
 createFooter();
 
 let tabs = {};
+let panes = {}; //Subscreens of tabs
+let buttons = {}; //Special-purpose buttons
 let resources = {};
+let buildings = {};
 let science = {};
-let scienceResearched = {};
+let scienceResearched = {}; //Used for saving
 let gameInterval;	//declared here so we can change the framerate in the options menu
 let saveTimeout;	//with clearInterval()
 
@@ -39,7 +42,7 @@ function gameLoop() {
 					if(resources.food.amount > 0) {
 						logMessage('You find something edible and immediately start consuming it.');
 						updateText(resHeader,'Things');
-						resources.food.rps -= 0.3;
+						resources.food.drain += 0.3;
 						gameVars.progress++;
 					}
 					break;
@@ -47,16 +50,18 @@ function gameLoop() {
 					if(resources.food.amount > 5) {
 						logMessage('You think you can spare some time looking for something to burn.');
 						gameVars.progress++;
-						const collectTinder = new Button('tinder', 'Collect tinder', tabs.main.pane, () => {
+						buttons.collectTinder = new Button('tinder', 'Collect tinder', tabs.main.pane, () => {
 							if(resources.food.consume(0.3)) {
 								resources.wood.add();
 							} else {
 								logMessage('You are too hungry to find tinder right now.');
 							}
 						});
+						buttons.foodButton.btn.after(buttons.collectTinder.btn);
+						buttons.collectTinder.btn.setAttribute('class','building');
 						let fireExists = false;
 						let fireButton = false;
-						const lightFire = new Button('fire','Light fire',tabs.main.pane, () => {
+						buttons.lightFire = new Button('fire','Light fire',tabs.main.pane, () => {
 							if(fireExists) {
 								//logMessage('You already have a fire.');
 							} else {
@@ -68,7 +73,7 @@ function gameLoop() {
 										gameVars.progress++;
 										updateText(tabs.main.tab,'a fire');
 										fireExists = true;
-										lightFire.btn.disabled = true;
+										buttons.lightFire.btn.disabled = true;
 										var fireTimeout = setTimeout(() => {
 											clearTimeout(fireTimeout);
 											if(gameVars.progress <= 5) {
@@ -77,11 +82,11 @@ function gameLoop() {
 												updateText(tabs.main.tab,'wilderness');
 												gameVars.speedrun = false;
 												fireExists = false;
-												lightFire.btn.disabled = false;
+												buttons.lightFire.btn.disabled = false;
 											}
 										}, 1000*30);
 										if(!fireButton) {
-											const digFoundation = new Button ('dig','Dig a foundation',tabs.main.pane, () => {
+											buttons.digFoundation = new Button ('dig','Dig a foundation',tabs.main.pane, () => {
 												if(resources.food.amount > 3) {
 													if(fireExists) {
 														resources.food.consume(0.3);
@@ -93,6 +98,8 @@ function gameLoop() {
 													logMessage('You are too hungry to dig right now.');
 												}
 											});
+											buttons.lightFire.btn.after(buttons.digFoundation.btn);
+											buttons.digFoundation.btn.setAttribute('class','building');
 											fireButton = true;
 										}
 									} else {
@@ -105,51 +112,39 @@ function gameLoop() {
 								}
 							}
 						});
+						buttons.collectTinder.btn.after(buttons.lightFire.btn);
+						buttons.lightFire.btn.setAttribute('class','building');
 					}
 					break;
 				case 3: //building a shelter
-					if(resources.earth.amount > 15) {
+					if(resources.earth.amount > 2) {
 						logMessage('You can build a simple shelter if you gather more things.');
 						gameVars.progress+=2;
-						let shelterExists = false;
-						const buildShelter = new Button ('shelter','Build a shelter',tabs.main.pane, () => {
-							if(shelterExists) {
-								//logMessage('You already have a shelter.');
-							} else if(resources.food.amount < 5) {
-								logMessage('You are too hungry to build a shelter.');
-							} else if(gameVars.progress < 5) {
-								logMessage('You are too cold to build a shelter.');
-							} else if(resources.wood.amount < 15) {
-								logMessage('You need more branches.');
-							} else if(resources.earth.consume(25)) {
-								resources.food.consume(3);
-								resources.wood.consume(15);
-								gameVars.progress++;
-								logMessage('The fire crackles in the comfort of your new structure.');
-								updateText(tabs.main.tab,'a shelter');
-								shelterExists = true;
-								buildShelter.btn.style.display = 'none';
-								resources.wood.rps -= 0.1;
-								var visitor = setInterval( () => {
-									if(resources.wood.amount < 5 || resources.food.amount < 10) {
-										let txt = 'You hear a rustling nearby. When you look, nothing is there.';
-										if(resources.wood.amount < 5) {txt += ' Your tinder is getting low.';};
-										if(resources.food.amount < 10) {txt += ' You need more food.';}
-										gameVars.speedrun = false;
-										logMessage(txt);
-									} else {
-										logMessage('A haggard stranger approaches warily. You motion them inside.');
-										gameVars.progress++;
-										resources.population.cap++;
-										resources.population.add();
-										resources.food.rps -= 0.3;
-										clearInterval(visitor);
-									}
-								},1000*((gameVars.speedrun) ? 30 : 60));
+					}
+					break;
+				
+				case 5:
+					if(buildings.house.number > 0) {
+						gameVars.progress++;
+						logMessage('The fire crackles in the comfort of your new structure. It slowly burns through your tinder.');
+						updateText(tabs.main.tab,'a shelter');
+						buttons.lightFire.btn.style.display = 'none';
+						resources.wood.drain += 0.1;
+						var visitor = setInterval( () => {
+							if(resources.wood.amount < 5 || resources.food.amount < 10) {
+								let txt = 'You hear a rustling nearby. When you look, nothing is there.';
+								if(resources.wood.amount < 5) {txt += ' Your tinder is getting low.';};
+								if(resources.food.amount < 10) {txt += ' You need more food.';}
+								gameVars.speedrun = false;
+								logMessage(txt);
 							} else {
-								logMessage('You need to dig more.');
+								logMessage('A haggard stranger approaches warily. You motion them inside.');
+								gameVars.progress++;
+								resources.population.add(1);
+								resources.food.drain += 0.3;
+								clearInterval(visitor);
 							}
-						});
+						},1000*((gameVars.speedrun) ? 25 : 50));
 					}
 					break;
 				case 7: //finding time to think
@@ -164,34 +159,33 @@ function gameLoop() {
 							clearInterval(thought);
 							gameVars.progress++;
 							logMessage('Your friend looks better, and offers help. You find a moment to rest, and. . . ? ? ? ?');
-							resources.food.rps += 0.3;
+							resources.food.income += 0.3;
 							updateText(tabs.science.tab,'? ? ? ?');
 							tabs.science.unlock();
 						}
-					},1000*((gameVars.speedrun) ? 30 : 60));
+					},1000*((gameVars.speedrun) ? 25 : 50));
 					gameVars.progress++;
 					break;
 				case 9:
 					if (science.thought.researched) {
 						updateText(tabs.science.tab,'Ideas');
 						updateText(tabs.main.tab,'Home');
-						resources.science.add();
-						resources.science.rps = 0.1;
+						resources.science.add(1);
+						resources.science.income = 0.1;
+						resources.population.income = 0.01;
 						gameVars.era++;
 						//saveTimeout = setTimeout(saveGame,gameVars.saveInterval*1000);
 						//createNavBar();
-						logMessage("(DevNote: This is the end of the prologue/tutorial! As I type, I am working on making sure it's working 100% before I move on. Let me know what you think!)");
 					}
 			}
 		case 1: //the era of science (and the normal game flow)
-			
+			//TODO: Population module
+			//population slowly rises to cap, and drains food
+			//assign workers after division of labor
 			
 	}
 	
 	let timePassed =  Math.max(0,Math.min((currentTime-gameVars.lastTick)/1000,24*60*60)); //allows a maximum of 1 day to pass
-	
-	//I can use an object to hold all the resources, and a for..in loop to go through them all. And I can reference any other resource by its name. Amazing!
-	//Update: I have learned about maps but I am too lazy to switch at this point in time.
 	
 	//This is for long periods of time, and managing where all the resources are going. Big TODO.
 	/*
@@ -213,6 +207,10 @@ function gameLoop() {
 		resources[name].update();
 	}
 	
+	for(const name in buildings) {
+		buildings[name].update();
+	}
+	
 	for(const name in science) {
 		science[name].update();
 	}
@@ -221,7 +219,7 @@ function gameLoop() {
 	
 	//I think it's possible to import and export saves by just going through every localStorage item with localStorage.length and localStorage.key()
 	//could even put them in an object and JSON it?
-	//probably need to sanitize and/or escape it?
+	//Do I need to sanitize and/or escape it?
 	gameVars.lastTick = currentTime;
 }
 
