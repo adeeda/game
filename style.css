@@ -63,6 +63,17 @@ a:hover {
 	font-weight: bold;
 }
 
+.resource { /* each line in the resources pane */
+	width: 100%;
+	display: flex;
+}
+.resource > div {
+	flex: 1;
+}
+.resource > div.res-name {
+	flex: 1.5;
+}
+
 #tab-bar {
 	padding: 0.4vw;
 }
@@ -94,24 +105,6 @@ a:hover {
 	grid-template-columns: 1fr 1fr;
 }
 
-.resource { /* each line in the resources pane */
-	width: 100%;
-	display: flex;
-}
-.resource > div {
-	flex: 1;
-}
-.resource > div.res-name {
-	flex: 2;
-}
-
-.log-message {
-	margin-top: 0.3vw;
-}
-.log-message:first-child {
-	font-weight: bold;
-}
-
 /* TODO: Learn about event bubbling again */
 button {
 	font: inherit;
@@ -131,6 +124,13 @@ button > div {
 }
 button.building {
 	height: 3em;
+}
+
+.log-message {
+	margin-top: 0.3vw;
+}
+.log-message:first-child {
+	font-weight: bold;
 }
 
 /* TODO: Fix tooltip position */
@@ -170,12 +170,25 @@ button.building {
 	margin: 0.5em;
 }
 
+.fleeting {
+	position: fixed;
+	top: 0px;
+	left: 48vw;
+	transition: opacity 1s;
+}
+
+main > div {
+	padding-bottom: 1em;
+}
 /* above this is the mobile layout */
 @media (min-width: var(--mobile-res-cutoff)), (orientation: landscape) { /* This is the desktop layout */
 
 	main {
 		display: flex;
 		height: 95vh;
+	}
+	main > div {
+		padding-bottom: 0px;
 	}
 
 	#left-pane {

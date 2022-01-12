@@ -1,3 +1,3 @@
 # game
 
-A simple game
+a simple game

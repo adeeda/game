@@ -25,6 +25,7 @@ let resources = {};
 let buildings = {};
 let science = {};
 let scienceResearched = {}; //Used for saving
+let jobs = {};
 let gameInterval;	//declared here so we can change the framerate in the options menu
 let saveTimeout;	//with clearInterval()
 
@@ -62,54 +63,50 @@ function gameLoop() {
 						let fireExists = false;
 						let fireButton = false;
 						buttons.lightFire = new Button('fire','Light fire',tabs.main.pane, () => {
-							if(fireExists) {
-								//logMessage('You already have a fire.');
-							} else {
-								if(resources.wood.amount > 5) {
-									if(resources.food.amount > 2) {
-										resources.wood.consume(5);
-										resources.food.consume(2);
-										logMessage('You light a warm fire, as your parents showed you. It is vulnerable to the elements.');
-										gameVars.progress++;
-										updateText(tabs.main.tab,'a fire');
-										fireExists = true;
-										buttons.lightFire.btn.disabled = true;
-										var fireTimeout = setTimeout(() => {
-											clearTimeout(fireTimeout);
-											if(gameVars.progress <= 5) {
-												logMessage('The fire has gone out.');
-												gameVars.progress--;
-												updateText(tabs.main.tab,'wilderness');
-												gameVars.speedrun = false;
-												fireExists = false;
-												buttons.lightFire.btn.disabled = false;
-											}
-										}, 1000*30);
-										if(!fireButton) {
-											buttons.digFoundation = new Button ('dig','Dig a foundation',tabs.main.pane, () => {
-												if(resources.food.amount > 3) {
-													if(fireExists) {
-														resources.food.consume(0.3);
-														resources.earth.add();
-													} else {
-														logMessage('You are too cold to dig right now.');
-													}
-												} else {
-													logMessage('You are too hungry to dig right now.');
-												}
-											});
-											buttons.lightFire.btn.after(buttons.digFoundation.btn);
-											buttons.digFoundation.btn.setAttribute('class','building');
-											fireButton = true;
+							if(resources.wood.amount > 5) {
+								if(resources.food.amount > 2) {
+									resources.wood.consume(5);
+									resources.food.consume(2);
+									logMessage('You light a warm fire, as your parents showed you. It is vulnerable to the elements.');
+									gameVars.progress++;
+									updateText(tabs.main.tab,'a fire');
+									fireExists = true;
+									buttons.lightFire.btn.disabled = true;
+									var fireTimeout = setTimeout(() => {
+										clearTimeout(fireTimeout);
+										if(gameVars.progress <= 5) {
+											logMessage('The fire has gone out.');
+											gameVars.progress--;
+											updateText(tabs.main.tab,'wilderness');
+											gameVars.speedrun = false;
+											fireExists = false;
+											buttons.lightFire.btn.disabled = false;
 										}
-									} else {
-										logMessage('You are too hungry to light a fire right now.');
+									}, 1000*30);
+									if(!fireButton) {
+										buttons.digFoundation = new Button ('dig','Dig a foundation',tabs.main.pane, () => {
+											if(resources.food.amount > 3) {
+												if(fireExists) {
+													resources.food.consume(0.3);
+													resources.earth.add();
+												} else {
+													logMessage('You are too cold to dig right now.');
+												}
+											} else {
+												logMessage('You are too hungry to dig right now.');
+											}
+										});
+										buttons.lightFire.btn.after(buttons.digFoundation.btn);
+										buttons.digFoundation.btn.setAttribute('class','building');
+										fireButton = true;
 									}
 								} else {
-									resources.wood.amount = 0;
-									logMessage('You try to light a fire, but all the pieces burn away too quickly.');
-									gameVars.speedrun = false;
+									logMessage('You are too hungry to light a fire right now.');
 								}
+							} else {
+								resources.wood.amount = 0;
+								logMessage('You try to light a fire, but all the pieces burn away too quickly.');
+								gameVars.speedrun = false;
 							}
 						});
 						buttons.collectTinder.btn.after(buttons.lightFire.btn);
@@ -141,7 +138,6 @@ function gameLoop() {
 								logMessage('A haggard stranger approaches warily. You motion them inside.');
 								gameVars.progress++;
 								resources.population.add(1);
-								resources.food.drain += 0.3;
 								clearInterval(visitor);
 							}
 						},1000*((gameVars.speedrun) ? 25 : 50));
@@ -159,7 +155,7 @@ function gameLoop() {
 							clearInterval(thought);
 							gameVars.progress++;
 							logMessage('Your friend looks better, and offers help. You find a moment to rest, and. . . ? ? ? ?');
-							resources.food.income += 0.3;
+							jobs.gatherer.increase(1);
 							updateText(tabs.science.tab,'? ? ? ?');
 							tabs.science.unlock();
 						}
@@ -174,6 +170,7 @@ function gameLoop() {
 						resources.science.income = 0.1;
 						resources.population.income = 0.01;
 						gameVars.era++;
+						gameVars.progress = 0;
 						//saveTimeout = setTimeout(saveGame,gameVars.saveInterval*1000);
 						//createNavBar();
 					}
@@ -186,31 +183,34 @@ function gameLoop() {
 	}
 	
 	let timePassed =  Math.max(0,Math.min((currentTime-gameVars.lastTick)/1000,24*60*60)); //allows a maximum of 1 day to pass
+	//console.log(`timepassed: ${timePassed}`);
 	
-	//This is for long periods of time, and managing where all the resources are going. Big TODO.
-	/*
-	let lowestBreakpoint=Infinity;
-	for ( const name in resources ) {
-		const thisBreakpoint = resources[name].getNextBreakpoint();
-		if (thisBreakpoint < lowestBreakpoint) {lowestBreakpoint = thisBreakpoint;}
+	let remainingTime = timePassed;
+	while(remainingTime > 0) {
+		let lowestBreakpoint = Math.min(updatePopulation(),remainingTime);
+		for ( const name in resources ) {
+			const thisBreakpoint = resources[name].getNextBreakpoint();
+			//console.log(`${name}: ${thisBreakpoint}`);
+			if (thisBreakpoint < lowestBreakpoint) {lowestBreakpoint = thisBreakpoint;}
+		}
+		//TODO: also check the plan for breakpoints and include that here too
+		
+		for ( const name in resources ) {
+			resources[name].tick(lowestBreakpoint);
+		}
+		//TODO: also tick the plan
+		
+		//console.log(`lowestBreakpoint: ${lowestBreakpoint}`);
+		remainingTime -= lowestBreakpoint;
 	}
-	//also check the plan and include that here too
-	for ( const name in resources ) {
-		resources[name].tick(lowestBreakpoint);
-	}
-	remainingTime -= lowestBreakpoint;
-	*/
 	
 	//update display
 	for(const name in resources) {
-		resources[name].tick(timePassed); //temporary solution, TODO: move to section above.
 		resources[name].update();
 	}
-	
 	for(const name in buildings) {
 		buildings[name].update();
 	}
-	
 	for(const name in science) {
 		science[name].update();
 	}
@@ -220,6 +220,27 @@ function gameLoop() {
 	//I think it's possible to import and export saves by just going through every localStorage item with localStorage.length and localStorage.key()
 	//could even put them in an object and JSON it?
 	//Do I need to sanitize and/or escape it?
-	gameVars.lastTick = currentTime;
+	gameVars.lastTick = currentTime;//-remainingTime*1000;
 }
 
+function updatePopulation () { //returns time until next breakpoint
+	let nextBreakpoint = Infinity;
+	let newPop = resources.population.amount - gameVars.popCount;
+	if(newPop > 0) {
+		nextBreakpoint = (Math.floor(resources.population.amount) + 1 - resources.population.amount) / resources.population.rps;
+		if(newPop >= 1) {
+			//console.log(`population added: ${newPop}`);
+			addPop = Math.floor(newPop);
+			gameVars.popCount += addPop;
+			//gameVars.people.push('Person'); //TODO: Give people random names and statistics
+			resources.food.addSink(0.3,addPop,'pop',true);
+			if(science.thought.researched) {
+				jobs.gatherer.increase(addPop,true);
+				//TODO: give the person the job
+			} else {
+				gameVars.jobs.idle += addPop;
+			}
+		}
+	}
+	return nextBreakpoint;
+}

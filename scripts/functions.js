@@ -63,35 +63,76 @@ function initialize () {
 	tabs.main = new Tab ('main',true,true);
 	tabs.main.pane.setAttribute('class','btn-grid');
 	tabs.science = new Tab ('science');
+	tabs.government = new Tab ('government');
 	
-	//TODO: functionalize the following nonsense?
-	//Rather, let me upload all the files at once.
+	let allGreen = {};
 	
 	//try to find the resources file
-	//TODO: sanitize/escape?
 	fetch('design/resources.csv')
 		.then(response => response.text())
 		.then(text => {
 			buildResources(text.replaceAll('\r',''));
-			//TODO: fetch the rest and call their build functions
+			finalInit();
 		})
 		.catch(error => {
 			//console.log(error);
-			//this should only be when I'm locally doing things, so I will upload the file I'm looking for now
+			//this should only be when I'm locally doing things, so I will upload all the files I'm looking for now
 			fileInput = document.createElement('input');
 			fileInput.setAttribute('type','file');
-			logMessage("Hello! The following file inputs are for testing locally. You shouldn't see this, so let me know if you do. Thanks!");
-			logMessage('Upload resources.csv').append(fileInput);
+			fileInput.setAttribute('multiple','');
+			logMessage("Hello! The following file input is for testing locally. You shouldn't see this, so let me know if you do. Thanks!");
+			logMessage('Upload 3 CSV files').append(fileInput);
 			fileInput.addEventListener('input', () => {
-				let csvFile = fileInput.files[0];
-				const reader = new FileReader();
-				reader.addEventListener("load", () => {
-					//console.log(reader.result);
-					fileInput.remove();
-					buildResources(reader.result.replaceAll('\r',''));
+				//Need three reads here
+				
+				const resReader = new FileReader();
+				resReader.addEventListener("load", () => {
+					//console.log(resReader.result);
+					buildResources(resReader.result.replaceAll('\r',''));
+					finalInit();
 				}, false);
-				reader.readAsText(csvFile);
-			})
+				resReader.readAsText(fileInput.files[1]); //resources
+				
+				const sciReader = new FileReader();
+				sciReader.addEventListener("load", () => {
+					//console.log(sciReader.result);
+					buildScience(sciReader.result.replaceAll('\r',''));
+					finalInit();
+				}, false);
+				sciReader.readAsText(fileInput.files[2]); //science
+				
+				const builReader = new FileReader();
+				builReader.addEventListener("load", () => {
+					//console.log(builReader.result);
+					buildBuildings(builReader.result.replaceAll('\r',''));
+					finalInit();
+				}, false);
+				builReader.readAsText(fileInput.files[0]); //buildings
+			});
+		});
+	
+	//try to find the science file
+	fetch('design/science.csv')
+		.then(response => response.text())
+		.then(text => {
+			buildScience(text.replaceAll('\r',''));
+			finalInit();
+		})
+		.catch(error => {
+			console.log(error);
+			//this shouldn't matter
+		});
+	
+	//try to find the buildings file
+	fetch('design/buildings.csv')
+		.then(response => response.text())
+		.then(text => {
+			buildBuildings(text.replaceAll('\r',''));
+			finalInit();
+		})
+		.catch(error => {
+			console.log(error);
+			//this shouldn't matter
 		});
 	
 	function buildResources (csv) {
@@ -104,31 +145,7 @@ function initialize () {
 				resources[name].load();
 			}
 		}
-		
-		//try to find the science file
-		//TODO: sanitize/escape?
-		fetch('design/science.csv')
-			.then(response => response.text())
-			.then(text => {
-				buildScience(text.replaceAll('\r',''));
-			})
-			.catch(error => {
-				//console.log(error);
-				//this should only be when I'm locally doing things, so I will upload the file I'm looking for now
-				fileInput = document.createElement('input');
-				fileInput.setAttribute('type','file');
-				logMessage('Upload science.csv').append(fileInput);
-				fileInput.addEventListener('input', () => {
-					let csvFile = fileInput.files[0];
-					const reader = new FileReader();
-					reader.addEventListener("load", () => {
-						//console.log(reader.result);
-						fileInput.remove();
-						buildScience(reader.result.replaceAll('\r',''));
-					}, false);
-					reader.readAsText(csvFile);
-				})
-			});
+		allGreen.resources = true;
 	}
 	
 	function buildScience (csv) {
@@ -145,31 +162,7 @@ function initialize () {
 				}
 			}
 		}
-		
-		//try to find the bulidings file
-		//TODO: sanitize/escape?
-		fetch('design/buildings.csv')
-			.then(response => response.text())
-			.then(text => {
-				buildBuildings(text.replaceAll('\r',''));
-			})
-			.catch(error => {
-				//console.log(error);
-				//this should only be when I'm locally doing things, so I will upload the file I'm looking for now
-				fileInput = document.createElement('input');
-				fileInput.setAttribute('type','file');
-				logMessage('Upload buildings.csv').append(fileInput);
-				fileInput.addEventListener('input', () => {
-					let csvFile = fileInput.files[0];
-					const reader = new FileReader();
-					reader.addEventListener("load", () => {
-						//console.log(reader.result);
-						fileInput.remove();
-						buildBuildings(reader.result.replaceAll('\r',''));
-					}, false);
-					reader.readAsText(csvFile);
-				})
-			});
+		allGreen.science = true;
 	}
 	
 	function buildBuildings (csv) {
@@ -179,36 +172,55 @@ function initialize () {
 			const name = attributes[i][0];
 			if(name) {
 				buildings[name] = new Building(...attributes[i]);
-				buildings[name].load();
 			}
 		}
-		
-		finalInit();//TODO: Move to end of initialization chain
+		allGreen.buildings = true;
 	}
 	
 	function finalInit() {
-		//TODO: if all things have been built, proceed, else do nothing.
+		//If all things have been built, proceed, else do nothing.
+		console.log(`Resources: ${allGreen.resources ? 'ok':'X'}; Science: ${allGreen.science ? 'ok':'X'}; Buildings: ${allGreen.buildings ? 'ok':'X'}`);
+		if(allGreen.resources && allGreen.science && allGreen.buildings) {
 		
-		rightPane.replaceChildren(); //clears any devlog things
-		
-		//switch based on era
-		switch (gameVars.era) {
-			case 0: //prologue/tutorial setup
-				buttons.foodButton = new Button('food','Gather food',tabs.main.pane,() => resources.food.add());
-				tabs.main.pane.prepend(buttons.foodButton.btn);
-				buttons.foodButton.btn.setAttribute('class','building');
-				gameVars.progress = 0;
-				logMessage('You are cold, hungry, and lonely.');
-				updateText(tabs.main.tab,'wilderness');
-				break;
-			case 1: //regular setup
-				createNavBar();
-				saveTimeout = setTimeout(saveGame,gameVars.saveInterval*1000);
-				updateText(resHeader,'Resources');
-				break;
+			rightPane.replaceChildren(); //clears any devlog things
+			createJobs();
+			
+			//switch based on era
+			switch (gameVars.era) {
+				case 0: //prologue/tutorial setup
+					buttons.foodButton = new Button('food','Gather food',tabs.main.pane,() => resources.food.add());
+					tabs.main.pane.prepend(buttons.foodButton.btn);
+					buttons.foodButton.btn.setAttribute('class','building');
+					gameVars.progress = 0;
+					gameVars.popCount = 0;
+					logMessage('You are cold, hungry, and lonely.');
+					updateText(tabs.main.tab,'wilderness');
+					break;
+				case 1: //regular setup
+					createNavBar();
+					saveTimeout = setTimeout(saveGame,gameVars.saveInterval*1000);
+					updateText(resHeader,'Resources');
+					for(const name in buildings) {
+						buildings[name].load();
+					}
+					break;
+			}
+			if(!gameVars.lastTick) {gameVars.lastTick = Date.now();}
+			gameInterval = setInterval(gameLoop,1000/gameVars.fps);
 		}
-		if(!gameVars.lastTick) {gameVars.lastTick = Date.now();}
-		gameInterval = setInterval(gameLoop,1000/gameVars.fps);
+	}
+}
+
+function createJobs () {
+	if(!gameVars.jobs) {gameVars.jobs = {};}
+	if(!gameVars.jobs.idle) {gameVars.jobs.idle = 0;}
+	
+	jobs.gatherer = new Job('gatherer',[0.4,'food',0.1,'wood']);
+	jobs.hunter = new Job('hunter',[0.8,'food'],'knapping');
+	jobs.digger = new Job('digger',[0.2,'earth'],'knapping');
+	
+	for( const name in jobs ) {
+		jobs[name].load();
 	}
 }
 
@@ -338,3 +350,4 @@ function displayNumber (number, type='amount') {
 	
 	return txt;
 }
+

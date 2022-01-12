@@ -76,7 +76,7 @@ class Resource {
 		}
 	}
 	
-	// FUNCTIONS CALLED BY BUILDINGS
+	// FUNCTIONS CALLED BY MECHANISMS
 	addSource (plusRps, number, mechanism, unstoppable=false) {
 		this.income += plusRps*number;
 		//TODO: Update if mechanism is already here
@@ -106,7 +106,7 @@ class Resource {
 		this.multiplier /= multiplier;
 		//TODO: search for matching mechanism, reduce by multiplier
 	}
-	// END FUNCTIONS CALLED BY BUILDINGS
+	// END FUNCTIONS CALLED BY MECHANISMS
 	
 	tick (time) {
 		let change = this.rps * time;
@@ -118,7 +118,7 @@ class Resource {
 			}
 		} else {
 			//TODO
-			//cut off the newest mechanisms until rps is greater than 0;
+			//cut off the adjective mechanisms until rps is greater than 0;
 			//buildings[name].decrease();
 			//by calling tick(time) again!!!!
 			//if no more mechanisms, then final result is just stay at 0:
@@ -130,9 +130,9 @@ class Resource {
 	
 	getNextBreakpoint () { //TODO: call for an adjustment on next tick? :O  if the tick is equal to this one! Alternatively: just call getNextBreakpoint on the tick, and if they're the same, then do the adjustment.
 		if(this.rps > 0) {
-			return (this.cap - this.amount)/this.rps;
+			return (this.amount === this.cap) ? Infinity : (this.cap - this.amount)/this.rps;
 		} else if(this.rps < 0) {
-			return this.amount/this.rps;
+			return (this.amount === 0) ? Infinity : -this.amount/this.rps;
 		} else {
 			return Infinity;
 		}
@@ -158,7 +158,6 @@ class Resource {
 	}
 	
 	load () {
-		//TODO: sources?
 		let saveString = localStorage.getItem(this.name);
 		if(saveString) {
 			//let things = saveString.split(',');
@@ -211,10 +210,17 @@ class Building extends Button {
 	constructor (name, costs, caps, multipliers, outs, ins, upgrades, dumbName="", description) {
 		super(name, name, tabs.main.pane, () => {
 			//on click
+			let ok=true;
 			for (let i=1; i<this.costs.length; i+=2) {
-				resources[this.costs[i]].consume(this.costs[i-1]*costMultiplier**this.number);
+				if(!resources[this.costs[i]].consume(this.costs[i-1]*costMultiplier**this.number)) {
+					//somehow fail
+					logMessage(`You don't have the ${resources[this.costs[i]].displayName} for that. Something went wrong.`);
+					ok = false;
+				}
 			}
-			this.increase(1,true);
+			if(ok) {
+				this.increase(1,true);
+			}
 		});
 		
 		if(dumbName) {this.dumbName = dumbName} else {this.dumbName=name;};
@@ -251,9 +257,7 @@ class Building extends Button {
 	}
 	
 	get displayName () {
-		//TODO
-		//if good science return this.name else
-		return this.dumbName;
+		return (science.language.researched) ? this.name : this.dumbName;
 	}
 	
 	get displayCosts () {
@@ -313,7 +317,7 @@ class Building extends Button {
 			}
 		}
 		if(ok) {
-			updateText(this.btn,`${this.displayName}` + ((this.activeNumber < this.number) ? `(${this.activeNumber}/${this.number})` : `(${this.number})`));
+			updateText(this.btn,`${this.displayName} ` + ((this.activeNumber < this.number) ? `(${this.activeNumber}/${this.number})` : `(${this.number})`));
 			if(this.caps) {
 				for (let i=1; i<this.caps.length; i+=2) {
 					resources[this.caps[i]].cap += this.caps[i-1]*by;
@@ -338,7 +342,7 @@ class Building extends Button {
 	}
 	
 	decrease (by) { //Decreases the number of active buildings
-		let actual = (this.activeNumber >= by) ? by : this.activeNumber; //whichever is smaller? wait should I just use... min?
+		let actual = Math.min(by,this.activeNumber);
 		
 		if(this.caps) {
 			for (let i=1; i<this.caps.length; i+=2) {
@@ -473,6 +477,47 @@ class Science extends Button {
 	load() {
 		this.researched = true;
 		this.visible = false;
+	}
+}
+
+class Job {
+	constructor (name, outputs, prereq=false, visible=false) {
+		this.name = name;
+		this.outputs = outputs;
+		this.visible = visible;
+		if(prereq) {this.prereq = prereq;}
+		
+		this.count = 0;
+	}
+	
+	increase (by=1, isCreating=false) {
+		let actual = (gameVars.jobs.idle > by || isCreating) ? by : gameVars.jobs.idle;
+		for (let i=1; i<this.outputs.length; i+=2) {
+			resources[this.outputs[i]].addSource(this.outputs[i-1],actual,this);
+		}
+		this.count += actual;
+		gameVars.jobs[this.name] = this.count;
+		if(!isCreating) {
+			gameVars.jobs.idle -= actual;
+		}
+	}
+	
+	decrease (by=1) {
+		let actual = (this.count > by) ? by : this.count;
+		for (let i=1; i<this.outputs.length; i+=2) {
+			resources[this.outputs[i]].removeSource(this.outputs[i-1],actual,this);
+		}
+		this.count -= actual;
+		gameVars.jobs[this.name] = this.count;
+		gameVars.jobs.idle += actual;
+	}
+	
+	load () {
+		if(gameVars.jobs[this.name]) {
+			this.increase(gameVars.jobs[this.name],true);
+		} else {
+			gameVars.jobs[this.name] = 0;
+		}
 	}
 }
 
