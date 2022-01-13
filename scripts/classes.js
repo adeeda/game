@@ -40,7 +40,12 @@ class Resource {
 			rps = 0;
 		}
 		if(science.mathematics.researched) { //TODO: science.time.researched
-			return `${rps} /s`;
+			this.tooltip.style.opacity = 0;
+			if(rps != 0) {
+				return `${rps} /s`;
+			} else {
+				return '';
+			}
 		} else {
 			updateText(this.tooltip,`${(rps > 0) ? 'going up' : 'going down'}`);
 			if(rps > 0) {
@@ -154,15 +159,14 @@ class Resource {
 	
 	save () {
 		let saveString = `${this.amount}`;
-		localStorage.setItem(this.name,saveString);
+		localStorage.setItem(`resources.${this.name}`,saveString);
 	}
 	
 	load () {
-		let saveString = localStorage.getItem(this.name);
+		let saveString = localStorage.getItem(`resources.${this.name}`);
 		if(saveString) {
 			//let things = saveString.split(',');
 			this.amount = parseInt(saveString,10);
-			this.update();
 			return true;
 		} else {
 			return false;
@@ -197,12 +201,30 @@ class Tab {
 }
 
 class Button {
-	constructor (name, description, pane, onClick) {
+	constructor (name, description, father, onClick) {
 		this.name = name;
 		this.btn = document.createElement('button');
 		updateText(this.btn,description);
-		pane.append(this.btn);
+		father.append(this.btn);
 		this.btn.addEventListener('click',onClick);
+	}
+	
+	hide() {
+		this.visible = false;
+		this.btn.style.display = 'none';
+	}
+	
+	show() {
+		this.visible = true;
+		this.btn.style.display = 'block';
+	}
+	
+	enable() {
+		this.btn.disabled = false;
+	}
+	
+	disable() {
+		this.btn.disabled = true;
 	}
 }
 
@@ -220,6 +242,7 @@ class Building extends Button {
 			}
 			if(ok) {
 				this.increase(1,true);
+				this.update();
 			}
 		});
 		
@@ -249,10 +272,8 @@ class Building extends Button {
 			// event.stopPropagation(); //<-- This is the one!
 		  // });
 		
-		this.visible = false;
-		this.btn.style.display = 'none';
+		this.hide();
 		this.btn.setAttribute('class','building');
-		
 		this.tooltip = createTooltip(this.btn);
 	}
 	
@@ -261,12 +282,12 @@ class Building extends Button {
 	}
 	
 	get displayCosts () {
-		let text = 'Cost:';
+		let txt = 'Cost:';
 		for (let i=1; i<this.costs.length; i+=2) {
-			text += ` ${displayNumber(this.costs[i-1]*costMultiplier**this.number,'of')} ${resources[this.costs[i]].displayName}`;
-			text += (i===this.costs.length-1) ? '' : ',' ;
+			txt += ` ${displayNumber(this.costs[i-1]*costMultiplier**this.number,'of')} ${resources[this.costs[i]].displayName}`;
+			txt += (i===this.costs.length-1) ? '' : ',' ;
 		}
-		return text;
+		return txt;
 	}
 	
 	update() {
@@ -279,8 +300,7 @@ class Building extends Button {
 				}
 			}
 			if(show) {
-				this.visible = true;
-				this.btn.style.display = 'block';
+				this.show();
 				updateText(this.btn,`${this.displayName}`);
 			}
 		}
@@ -290,12 +310,12 @@ class Building extends Button {
 			for (let i=1; i<this.costs.length; i+=2) {
 				if( resources[this.costs[i]].amount < this.costs[i-1]*costMultiplier**this.number ) {
 					//cost is not met
-					this.btn.disabled = true;
+					this.disable();
 					ok = false;
 					break;
 				}
 			}
-			if (ok) {this.btn.disabled = false;}
+			if (ok) {this.enable();}
 			updateText(this.tooltip,`${this.description} ${this.displayCosts}`);
 		}
 	}
@@ -316,7 +336,8 @@ class Building extends Button {
 				ok = false;
 			}
 		}
-		if(ok) {
+		if(ok && actual > 0) {
+			this.show();
 			updateText(this.btn,`${this.displayName} ` + ((this.activeNumber < this.number) ? `(${this.activeNumber}/${this.number})` : `(${this.number})`));
 			if(this.caps) {
 				for (let i=1; i<this.caps.length; i+=2) {
@@ -344,24 +365,26 @@ class Building extends Button {
 	decrease (by) { //Decreases the number of active buildings
 		let actual = Math.min(by,this.activeNumber);
 		
-		if(this.caps) {
-			for (let i=1; i<this.caps.length; i+=2) {
-				resources[this.caps[i]].cap -= this.caps[i-1]*actual;
+		if(actual > 0) {
+			if(this.caps) {
+				for (let i=1; i<this.caps.length; i+=2) {
+					resources[this.caps[i]].cap -= this.caps[i-1]*actual;
+				}
 			}
-		}
-		if(this.multipliers) {
-			for (let i=1; i<this.multipliers.length; i+=2) {
-				resources[this.multipliers[i]].removeMultiplier(this.multipliers[i-1]*actual,this);
+			if(this.multipliers) {
+				for (let i=1; i<this.multipliers.length; i+=2) {
+					resources[this.multipliers[i]].removeMultiplier(this.multipliers[i-1]*actual,this);
+				}
 			}
-		}
-		if(this.outs) {
-			for (let i=1; i<this.outs.length; i+=2) {
-				resources[this.outs[i]].removeSource(this.outs[i-1],actual,this);
+			if(this.outs) {
+				for (let i=1; i<this.outs.length; i+=2) {
+					resources[this.outs[i]].removeSource(this.outs[i-1],actual,this);
+				}
 			}
-		}
-		if(this.ins) {
-			for (let i=1; i<this.ins.length; i+=2) {
-				resources[this.ins[i]].removeSink(this.ins[i-1],actual,this);
+			if(this.ins) {
+				for (let i=1; i<this.ins.length; i+=2) {
+					resources[this.ins[i]].removeSink(this.ins[i-1],actual,this);
+				}
 			}
 		}
 		
@@ -405,16 +428,14 @@ class Science extends Button {
 			if (ok) {
 				this.researched = true;
 				scienceResearched[this.name] = true; //This is for an easy savestate
-				this.visible = false;
-				this.btn.style.display = 'none';
+				this.hide();
 				if(message) {
 					logMessage(message);
 				}
 			}
 		});
 		this.researched = false;
-		this.visible = false;
-		this.btn.style.display = 'none';
+		this.hide();
 		
 		if(prereqs) {this.prereqs = prereqs.split(';');} else {this.prereqs = false;};
 		this.costs = costs.split(';');
@@ -429,7 +450,7 @@ class Science extends Button {
 		if(!this.researched) {
 			if(!this.visible) {
 				if(!this.prereqs) {
-					this.unlock();
+					this.show();
 				} else { //check prereqs
 					let ok = true;
 					for (let i=0; i<this.prereqs.length; i++) {
@@ -438,7 +459,7 @@ class Science extends Button {
 							break;
 						}
 					}
-					if(ok) {this.unlock();}
+					if(ok) {this.show();}
 				}
 			}
 			if(this.visible) {
@@ -446,12 +467,12 @@ class Science extends Button {
 				for (let i=1; i<this.costs.length; i+=2) {
 					if( resources[this.costs[i]].amount < this.costs[i-1] ) {
 						//cost is not met
-						this.btn.disabled = true;
+						this.disable();
 						ok = false;
 						break;
 					}
 				}
-				if (ok) {this.btn.disabled = false;}
+				if (ok) {this.enable();}
 				
 				//TODO: Might not need to update this every frame, but where do I update it?
 				if(this.tooltip) {
@@ -469,11 +490,6 @@ class Science extends Button {
 		return text;
 	}
 	
-	unlock () {
-		this.visible = true;
-		this.btn.style.display = 'block';
-	}
-	
 	load() {
 		this.researched = true;
 		this.visible = false;
@@ -488,28 +504,90 @@ class Job {
 		if(prereq) {this.prereq = prereq;}
 		
 		this.count = 0;
+		
+		this.div = document.createElement('div');
+		this.div.setAttribute('class','job');
+		this.txt = document.createElement('div');
+		updateText(this.txt,`${this.name}s`);
+		this.txtCount = document.createElement('div');
+		updateText(this.txtCount,`${this.count}`);
+		this.plus = document.createElement('button');
+		this.plus.setAttribute('class','small');
+		this.plus.style.display = 'none';
+		this.plus.disabled = true;
+		updateText(this.plus,'+');
+		this.minus = document.createElement('button');
+		this.minus.setAttribute('class','small');
+		this.minus.style.display = 'none';
+		this.minus.disabled = true;
+		updateText(this.minus,'-');
+		
+		this.div.append(this.txt,this.txtCount,this.plus,this.minus);
+		tabs.government.pane.append(this.div);
+		
+		this.plus.addEventListener('click', () => {
+			this.increase(1);
+		});
+		
+		this.minus.addEventListener('click', () => {
+			this.decrease(1);
+		});
 	}
 	
 	increase (by=1, isCreating=false) {
 		let actual = (gameVars.jobs.idle > by || isCreating) ? by : gameVars.jobs.idle;
-		for (let i=1; i<this.outputs.length; i+=2) {
-			resources[this.outputs[i]].addSource(this.outputs[i-1],actual,this);
-		}
-		this.count += actual;
-		gameVars.jobs[this.name] = this.count;
-		if(!isCreating) {
-			gameVars.jobs.idle -= actual;
+		if(actual === 0) {return false;} else {
+			for (let i=1; i<this.outputs.length; i+=2) {
+				resources[this.outputs[i]].addSource(this.outputs[i-1],actual,this);
+			}
+			this.count += actual;
+			gameVars.jobs[this.name] = this.count;
+			if(!isCreating) {
+				gameVars.jobs.idle -= actual;
+			}
+			updateText(this.txtCount,`${this.count}`);
 		}
 	}
 	
 	decrease (by=1) {
 		let actual = (this.count > by) ? by : this.count;
-		for (let i=1; i<this.outputs.length; i+=2) {
-			resources[this.outputs[i]].removeSource(this.outputs[i-1],actual,this);
+		if(actual === 0) {return false;} else {
+			for (let i=1; i<this.outputs.length; i+=2) {
+				resources[this.outputs[i]].removeSource(this.outputs[i-1],actual,this);
+			}
+			this.count -= actual;
+			gameVars.jobs[this.name] = this.count;
+			gameVars.jobs.idle += actual;
+			updateText(this.txtCount,`${this.count}`);
 		}
-		this.count -= actual;
-		gameVars.jobs[this.name] = this.count;
-		gameVars.jobs.idle += actual;
+	}
+	
+	update () {
+		if(!this.visible) {
+			if(!this.prereq) {
+				this.unlock();
+			} else if(science[this.prereq].researched) {
+				this.unlock();
+			}
+		}
+		if(this.visible) {
+			if(gameVars.jobs.idle <= 0) {
+				this.plus.disabled = true;
+			} else {
+				this.plus.disabled = false;
+			}
+			if(this.count <= 0) {
+				this.minus.disabled = true;
+			} else {
+				this.minus.disabled = false;
+			}
+		}
+	}
+	
+	unlock () {
+		this.visible = true;
+		this.plus.style.display = 'block';
+		this.minus.style.display = 'block';
 	}
 	
 	load () {

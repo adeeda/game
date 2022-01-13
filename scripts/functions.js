@@ -119,7 +119,7 @@ function initialize () {
 			finalInit();
 		})
 		.catch(error => {
-			console.log(error);
+			//console.log(error);
 			//this shouldn't matter
 		});
 	
@@ -131,7 +131,7 @@ function initialize () {
 			finalInit();
 		})
 		.catch(error => {
-			console.log(error);
+			//console.log(error);
 			//this shouldn't matter
 		});
 	
@@ -184,26 +184,54 @@ function initialize () {
 		
 			rightPane.replaceChildren(); //clears any devlog things
 			createJobs();
-			
+			if(!gameVars.era) {gameVars.era = 0;}
 			//switch based on era
 			switch (gameVars.era) {
 				case 0: //prologue/tutorial setup
-					buttons.foodButton = new Button('food','Gather food',tabs.main.pane,() => resources.food.add());
-					tabs.main.pane.prepend(buttons.foodButton.btn);
-					buttons.foodButton.btn.setAttribute('class','building');
-					gameVars.progress = 0;
-					gameVars.popCount = 0;
-					logMessage('You are cold, hungry, and lonely.');
-					updateText(tabs.main.tab,'wilderness');
-					break;
-				case 1: //regular setup
-					createNavBar();
-					saveTimeout = setTimeout(saveGame,gameVars.saveInterval*1000);
-					updateText(resHeader,'Resources');
-					for(const name in buildings) {
-						buildings[name].load();
+					createButtons();
+					buttons.foodButton.show();
+					if(!gameVars.progress) {
+						gameVars.progress = 0;
+						gameVars.popCount = 0;
+					}
+					if(gameVars.progress < 6) {
+						logMessage('You are cold, hungry, and lonely.');
+						updateText(tabs.main.tab,'wilderness');
+						resources.food.amount = 0;
+						gameVars.progress = 0;
+					} else {
+						resources.food.drain += 0.3;
+						updateText(resHeader,'Things');
+						buttons.collectTinder.show();
+						if (gameVars.progress < 9) {
+							logMessage('Your shelter is cold. You are hungry and lonely.');
+							gameVars.progress = 4;
+							resources.population.amount = 0;
+							gameVars.popCount = 0;
+							gameVars.jobs.idle = 0;
+							updateText(tabs.main.tab,'a shelter');
+							resources.food.amount = 0;
+							buttons.lightFire.show();
+						} else {
+							logMessage('Something tugs at your mind.');
+							tabs.science.unlock();
+							buttons.digFoundation.show();
+							gameVars.progress = 9;
+						}
 					}
 					break;
+				case 1: //regular setup
+					//updateText(resHeader,'Resources');
+					break;
+			}
+			
+			createNavBar();
+			saveTimeout = setTimeout(saveGame,gameVars.saveInterval*1000);
+			for(const name in buildings) {
+				buildings[name].load();
+			}
+			if(gameVars.popCount > 0) {
+				resources.food.addSink(0.3,gameVars.popCount,'pop',true); //TODO: more things will depend on population?
 			}
 			if(!gameVars.lastTick) {gameVars.lastTick = Date.now();}
 			gameInterval = setInterval(gameLoop,1000/gameVars.fps);
@@ -211,13 +239,86 @@ function initialize () {
 	}
 }
 
+function createButtons () {
+	buttons.foodButton = new Button('food','Gather food',tabs.main.pane,() => resources.food.add());
+	tabs.main.pane.prepend(buttons.foodButton.btn);
+	buttons.foodButton.btn.setAttribute('class','building');
+	
+	buttons.collectTinder = new Button('tinder', 'Collect tinder', tabs.main.pane, () => {
+		if(resources.food.consume(0.3)) {
+			resources.wood.add();
+		} else {
+			logMessage('You are too hungry to find tinder right now.');
+		}
+	});
+	buttons.foodButton.btn.after(buttons.collectTinder.btn);
+	buttons.collectTinder.btn.setAttribute('class','building');
+	
+	let fireExists = false;
+	buttons.lightFire = new Button('fire','Light fire',tabs.main.pane, () => {
+		if(resources.wood.amount > 5) {
+			if(resources.food.amount > 2) {
+				resources.wood.consume(5);
+				resources.food.consume(2);
+				logMessage('You light a warm fire, as your parents showed you. It is vulnerable to the elements.');
+				gameVars.progress++;
+				updateText(tabs.main.tab,'a fire');
+				fireExists = true;
+				buttons.lightFire.disable();
+				var fireTimeout = setTimeout(() => {
+					clearTimeout(fireTimeout);
+					if(gameVars.progress <= 5) {
+						logMessage('The fire has gone out.');
+						gameVars.progress--;
+						updateText(tabs.main.tab,'wilderness');
+						gameVars.speedrun = false;
+						fireExists = false;
+						buttons.lightFire.enable();
+					}
+				}, 1000*30);
+				buttons.digFoundation.show();
+			} else {
+				logMessage('You are too hungry to light a fire right now.');
+			}
+		} else {
+			resources.wood.amount = 0;
+			logMessage('You try to light a fire, but all the pieces burn away too quickly.');
+			gameVars.speedrun = false;
+		}
+	});
+	buttons.collectTinder.btn.after(buttons.lightFire.btn);
+	buttons.lightFire.btn.setAttribute('class','building');
+	
+	buttons.digFoundation = new Button ('dig','Dig a foundation',tabs.main.pane, () => {
+		if(resources.food.amount > 3) {
+			if(fireExists || gameVars.progress >= 9) {
+				resources.food.consume(0.3);
+				resources.earth.add();
+			} else {
+				logMessage('You are too cold to dig right now.');
+			}
+		} else {
+			logMessage('You are too hungry to dig right now.');
+		}
+	});
+	buttons.lightFire.btn.after(buttons.digFoundation.btn);
+	buttons.digFoundation.btn.setAttribute('class','building');
+	
+	for (const name in buttons) {
+		buttons[name].hide();
+	}
+}
+
 function createJobs () {
 	if(!gameVars.jobs) {gameVars.jobs = {};}
 	if(!gameVars.jobs.idle) {gameVars.jobs.idle = 0;}
 	
-	jobs.gatherer = new Job('gatherer',[0.4,'food',0.1,'wood']);
-	jobs.hunter = new Job('hunter',[0.8,'food'],'knapping');
-	jobs.digger = new Job('digger',[0.2,'earth'],'knapping');
+	updateText(idleDisp,`Idle: ${gameVars.jobs.idle}`);
+	tabs.government.pane.append(idleDisp);
+	
+	jobs.gatherer = new Job('gatherer',[0.3,'food',0.1,'wood']);
+	jobs.hunter = new Job('hunter',[0.7,'food'],'knapping');
+	jobs.digger = new Job('digger',[0.2,'earth'],'division of labor');
 	
 	for( const name in jobs ) {
 		jobs[name].load();
