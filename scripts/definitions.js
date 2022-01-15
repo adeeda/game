@@ -8,6 +8,7 @@ const midPane = document.querySelector('#tab-pane');
 const rightPane = document.querySelector('#right-pane');
 const about = document.querySelector('#about');
 const credits = document.querySelector('#credits');
+const vNumber = document.querySelector('#version');
 let idleDisp = document.createElement('div');
 const discoveryFraction = 0.05;
 const costMultiplier = 1.15;

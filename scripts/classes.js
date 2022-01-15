@@ -11,7 +11,7 @@ class Resource {
 		this.multipliers = [];
 		this.sources = [];
 		this.sinks = [];
-		this.active = false;
+		this.active = 0;
 		
 		this.bar = document.createElement('div');
 		this.bar.setAttribute('class','resource');
@@ -39,10 +39,12 @@ class Resource {
 		if( (rps > 0 && this.amount === this.cap) || (rps < 0 && this.amount === 0) ) {
 			rps = 0;
 		}
-		if(science.mathematics.researched) { //TODO: science.time.researched
+		if(science.time.researched) { //TODO: details with logistics
 			this.tooltip.style.opacity = 0;
-			if(rps != 0) {
-				return `${rps} /s`;
+			if(rps > 0) {
+				return `+${displayNumber(rps,'decimals')} /s`;
+			} else if(rps < 0) {
+				return `-${displayNumber(Math.abs(rps),'decimals')} /s`;
 			} else {
 				return '';
 			}
@@ -145,12 +147,12 @@ class Resource {
 	
 	update () {
 		if(this.active || this.amount >= 1) {
-			this.active = true;
+			this.active = 1;
 			updateText(this.txtName,`${this.displayName}:`);
 			updateText(this.txtAmount,`${displayNumber(this.amount,this.name === 'population' ? 'discrete' : '')}`);
-			//TODO: capacity science conditional
-			//if(this.cap != Infinity) {updateText(this.txtCap,`/ ${displayNumber(this.cap)}`);}
-			
+			if(science.foresight.researched) {
+				if(this.cap != Infinity) {updateText(this.txtCap,`/ ${displayNumber(this.cap)}`);}
+			}
 			updateText(this.txtRate,this.displayRPS);
 			//TODO: dumbify()
 			//logistics allows the view of all the sources and multipliers
@@ -158,15 +160,16 @@ class Resource {
 	}
 	
 	save () {
-		let saveString = `${this.amount}`;
+		let saveString = `${this.amount},${this.active}`;
 		localStorage.setItem(`resources.${this.name}`,saveString);
 	}
 	
 	load () {
 		let saveString = localStorage.getItem(`resources.${this.name}`);
 		if(saveString) {
-			//let things = saveString.split(',');
-			this.amount = parseInt(saveString,10);
+			let things = saveString.split(',');
+			this.amount = parseInt(things[0],10);
+			this.active = parseInt(things[1],10);
 			return true;
 		} else {
 			return false;
@@ -229,7 +232,7 @@ class Button {
 }
 
 class Building extends Button {
-	constructor (name, costs, caps, multipliers, outs, ins, upgrades, dumbName="", description) {
+	constructor (name, costs, caps, multipliers, outs, ins, upgrades, dumbName="", description, prereq) {
 		super(name, name, tabs.main.pane, () => {
 			//on click
 			let ok=true;
@@ -260,7 +263,8 @@ class Building extends Button {
 			this.ins = false;
 		}
 		if(upgrades) {this.upgrades = upgrades.split(';');} else {this.upgrades = false;} //TODO
-		
+		if(prereq) {this.prereq = prereq;} else {this.prereq = false;}
+			
 		this.number = 0;
 		this.activeNumber = 0;
 		
@@ -291,7 +295,7 @@ class Building extends Button {
 	}
 	
 	update() {
-		if(!this.visible) {
+		if(!this.visible && (!this.prereq || science[this.prereq].researched) ) {
 			let show = true;
 			for( let i=1; i<this.costs.length; i+=2 ) {
 				if( resources[this.costs[i]].amount < this.costs[i-1] * discoveryFraction) {
@@ -437,8 +441,8 @@ class Science extends Button {
 		this.researched = false;
 		this.hide();
 		
-		if(prereqs) {this.prereqs = prereqs.split(';');} else {this.prereqs = false;};
-		this.costs = costs.split(';');
+		if(prereqs) {this.prereqs = prereqs.split(';');} else {this.prereqs = false;}
+		if(costs) {this.costs = costs.split(';');} else {this.costs = false;}
 		this.description = description;
 		
 		if(description) {
@@ -483,11 +487,15 @@ class Science extends Button {
 	}
 	
 	get displayCosts () {
-		let text = 'Cost:';
-		for (let i=1; i<this.costs.length; i+=2) {
-			text += ` ${displayNumber(this.costs[i-1],'of')} ${resources[this.costs[i]].displayName}`;
+		if(this.costs) {
+			let txt = 'Cost:';
+			for (let i=1; i<this.costs.length; i+=2) {
+				txt += ` ${displayNumber(this.costs[i-1],'of')} ${resources[this.costs[i]].displayName}`;
+			}
+			return txt;
+		} else {
+			return '';
 		}
-		return text;
 	}
 	
 	load() {
@@ -508,9 +516,7 @@ class Job {
 		this.div = document.createElement('div');
 		this.div.setAttribute('class','job');
 		this.txt = document.createElement('div');
-		updateText(this.txt,`${this.name}s`);
 		this.txtCount = document.createElement('div');
-		updateText(this.txtCount,`${this.count}`);
 		this.plus = document.createElement('button');
 		this.plus.setAttribute('class','small');
 		this.plus.style.display = 'none';
@@ -532,6 +538,8 @@ class Job {
 		this.minus.addEventListener('click', () => {
 			this.decrease(1);
 		});
+		
+		//TODO: Tooltip if logistics
 	}
 	
 	increase (by=1, isCreating=false) {
@@ -586,6 +594,8 @@ class Job {
 	
 	unlock () {
 		this.visible = true;
+		updateText(this.txt,`${this.name}s`);
+		updateText(this.txtCount,`${this.count}`);
 		this.plus.style.display = 'block';
 		this.minus.style.display = 'block';
 	}

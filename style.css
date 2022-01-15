@@ -22,7 +22,7 @@ body {
 
 header {
 	background-color: var(--dark-color);
-	padding: 0.2vw;
+	padding: 0.2em;
 }
 
 nav {
@@ -31,19 +31,24 @@ nav {
 	display: inline;
 }
 
+main > div {
+	padding: 0.3em;
+}
+
 footer {
 	position: fixed;
 	bottom: 0px;
 	right: 0px;
+	padding: 0.1em;
 }
 
 footer > a,
 nav > a {
-	margin-right: 0.5vw;
+	margin: 0.4em;
 }
 
 h1, h2 {
-	margin: 0.2vw;
+	margin: 0.2em;
 	font-size: inherit;
 	display: inline;
 }
@@ -66,6 +71,7 @@ a:hover {
 .resource { /* each line in the resources pane */
 	width: 100%;
 	display: flex;
+	white-space: nowrap;
 }
 .resource > div {
 	flex: 1;
@@ -141,7 +147,7 @@ button.small {
 	min-width: 2em;
 }
 .job > div:first-child {
-	width: 5em;
+	width: 8em;
 }
 
 .log-message {
@@ -195,9 +201,6 @@ button.small {
 	transition: opacity 1s;
 }
 
-main > div {
-	padding-bottom: 1em;
-}
 /* above this is the mobile layout */
 @media (min-width: var(--mobile-res-cutoff)), (orientation: landscape) { /* This is the desktop layout */
 

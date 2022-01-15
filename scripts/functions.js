@@ -15,18 +15,20 @@ function createNavBar() {
 	});
 	
 	const optionsButton = document.createElement('a');
+	updateText(optionsButton,'options');
 	//TODO options menu
 	
 	const deleteSave = document.createElement('a');
 	updateText(deleteSave,'Delete Save');
 	deleteSave.addEventListener('click', event => {
-		//TODO: Present a warning dialogue first
-		localStorage.clear();
+		if(window.confirm('This will permanently completely reset your progress.')) {
+			localStorage.clear();
+			window.location.reload();
+		}
 		event.preventDefault();
-		//window.location.reload();
 	});
 	
-	navBar.append(saveButton,optionsButton,deleteSave);
+	navBar.prepend(saveButton,optionsButton,deleteSave);
 	
 }
 
@@ -67,73 +69,66 @@ function initialize () {
 	
 	let allGreen = {};
 	
-	//try to find the resources file
-	fetch('design/resources.csv')
-		.then(response => response.text())
-		.then(text => {
-			buildResources(text.replaceAll('\r',''));
-			finalInit();
-		})
-		.catch(error => {
-			//console.log(error);
-			//this should only be when I'm locally doing things, so I will upload all the files I'm looking for now
-			fileInput = document.createElement('input');
-			fileInput.setAttribute('type','file');
-			fileInput.setAttribute('multiple','');
-			logMessage("Hello! The following file input is for testing locally. You shouldn't see this, so let me know if you do. Thanks!");
-			logMessage('Upload 3 CSV files').append(fileInput);
-			fileInput.addEventListener('input', () => {
-				//Need three reads here
-				
-				const resReader = new FileReader();
-				resReader.addEventListener("load", () => {
-					//console.log(resReader.result);
-					buildResources(resReader.result.replaceAll('\r',''));
-					finalInit();
-				}, false);
-				resReader.readAsText(fileInput.files[1]); //resources
-				
-				const sciReader = new FileReader();
-				sciReader.addEventListener("load", () => {
-					//console.log(sciReader.result);
-					buildScience(sciReader.result.replaceAll('\r',''));
-					finalInit();
-				}, false);
-				sciReader.readAsText(fileInput.files[2]); //science
-				
-				const builReader = new FileReader();
-				builReader.addEventListener("load", () => {
-					//console.log(builReader.result);
-					buildBuildings(builReader.result.replaceAll('\r',''));
-					finalInit();
-				}, false);
-				builReader.readAsText(fileInput.files[0]); //buildings
+	//FILE LOADING
+	if(window.location.protocol === 'file:') {
+		//we're testing locally
+		fileInput = document.createElement('input');
+		fileInput.setAttribute('type','file');
+		fileInput.setAttribute('multiple','');
+		logMessage("Hello! The following file input is for testing locally. You shouldn't see this, so let me know if you do. Thanks!");
+		logMessage('Upload 3 CSV files').append(fileInput);
+		fileInput.addEventListener('input', () => {
+			//Need three reads here
+			
+			const resReader = new FileReader();
+			resReader.addEventListener("load", () => {
+				//console.log(resReader.result);
+				buildResources(resReader.result.replaceAll('\r',''));
+				finalInit();
+			}, false);
+			resReader.readAsText(fileInput.files[1]); //resources
+			
+			const sciReader = new FileReader();
+			sciReader.addEventListener("load", () => {
+				//console.log(sciReader.result);
+				buildScience(sciReader.result.replaceAll('\r',''));
+				finalInit();
+			}, false);
+			sciReader.readAsText(fileInput.files[2]); //science
+			
+			const builReader = new FileReader();
+			builReader.addEventListener("load", () => {
+				//console.log(builReader.result);
+				buildBuildings(builReader.result.replaceAll('\r',''));
+				finalInit();
+			}, false);
+			builReader.readAsText(fileInput.files[0]); //buildings
+		});
+		//TODO: Dev features?
+	} else {
+		//it's on the internet
+		//try to find the resources file
+		fetch('design/resources.csv')
+			.then(response => response.text())
+			.then(text => {
+				buildResources(text.replaceAll('\r',''));
+				finalInit();
 			});
-		});
-	
-	//try to find the science file
-	fetch('design/science.csv')
-		.then(response => response.text())
-		.then(text => {
-			buildScience(text.replaceAll('\r',''));
-			finalInit();
-		})
-		.catch(error => {
-			//console.log(error);
-			//this shouldn't matter
-		});
-	
-	//try to find the buildings file
-	fetch('design/buildings.csv')
-		.then(response => response.text())
-		.then(text => {
-			buildBuildings(text.replaceAll('\r',''));
-			finalInit();
-		})
-		.catch(error => {
-			//console.log(error);
-			//this shouldn't matter
-		});
+		//try to find the science file
+		fetch('design/science.csv')
+			.then(response => response.text())
+			.then(text => {
+				buildScience(text.replaceAll('\r',''));
+				finalInit();
+			});
+		//try to find the buildings file
+		fetch('design/buildings.csv')
+			.then(response => response.text())
+			.then(text => {
+				buildBuildings(text.replaceAll('\r',''));
+				finalInit();
+			});
+	}
 	
 	function buildResources (csv) {
 		const attributes = csv.split('\n');
@@ -212,6 +207,11 @@ function initialize () {
 							updateText(tabs.main.tab,'a shelter');
 							resources.food.amount = 0;
 							buttons.lightFire.show();
+						} else if(gameVars.progress === 9) {
+							logMessage('Your friend is waiting for you. You had something to do, but what was it . . . ? ? ? ?');
+							updateText(tabs.science.tab,'? ? ? ?');
+							tabs.science.unlock();
+							buttons.digFoundation.show();
 						} else {
 							logMessage('Something tugs at your mind.');
 							tabs.science.unlock();
@@ -221,6 +221,16 @@ function initialize () {
 					}
 					break;
 				case 1: //regular setup
+					logMessage('Something tugs at your mind.');
+					updateText(tabs.main.tab,'Home');
+					updateText(tabs.science.tab,'Ideas');
+					tabs.science.unlock();
+					updateText(tabs.government.tab,'People');
+					tabs.government.unlock();
+					updateText(resHeader,'Things');
+					resources.food.drain += 0.3;
+					resources.science.income = 0.1;
+					resources.population.income = 0.01;
 					//updateText(resHeader,'Resources');
 					break;
 			}
@@ -317,8 +327,9 @@ function createJobs () {
 	tabs.government.pane.append(idleDisp);
 	
 	jobs.gatherer = new Job('gatherer',[0.3,'food',0.1,'wood']);
-	jobs.hunter = new Job('hunter',[0.7,'food'],'knapping');
-	jobs.digger = new Job('digger',[0.2,'earth'],'division of labor');
+	jobs.hunter = new Job('hunter',[0.7,'food',0.001,'remains'],'knapping');
+	jobs.digger = new Job('digger',[0.2,'earth',0.002,'rare earth']);
+	jobs.woodcutter = new Job('woodcutter',[0.3,'wood'],'knapping');
 	
 	for( const name in jobs ) {
 		jobs[name].load();
@@ -368,13 +379,15 @@ function updateText (elmnt, txt) { //this is to get around textContent deleting 
 	}
 }
 
-function displayNumber (number, type='amount') {
+function displayNumber (number, type='') {
 	let txt = '';
 	
-	if(science.mathematics.researched) {
-		return Math.trunc(number);
+	if(science.numbers.researched) {
+		return type.includes('decimals') ? number.toFixed(3) : Math.trunc(number);
 	} else if(science.counting.researched) {
-		if(number < 13) {
+		if(number < 1) {
+			return type.includes('decimals') ? 'a bit' : 0;
+		} else if(number < 13) {
 			return Math.trunc(number);
 		} else if(number < 25) {
 			txt = 'an amount' + ((type.includes('of')) ? ' of' : '');
@@ -394,7 +407,7 @@ function displayNumber (number, type='amount') {
 			txt = 'too much';
 		}
 	} else {
-		if(type==='discrete') {
+		if(type.includes('discrete')) {
 			if(number < 1) {
 				txt = 'none';
 			} else if(number < 2) {

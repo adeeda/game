@@ -1,3 +1,5 @@
+const version = '0.0.1';
+
 //start by loading save
 let gameVars = localStorage.getItem('gameVars');
 if(gameVars) {
@@ -7,11 +9,13 @@ if(gameVars) {
 		title: 'Game Title',
 		fps: 12,
 		saveInterval: 30, //seconds
-		speedrun: true //speeds up certain things if you know what you're doing
+		speedrun: true, //speeds up certain things if you know what you're doing
+		version: version
 	}
 }
 
 header.textContent = pageTitle.textContent = gameVars.title;
+updateText(vNumber,`v ${version}`);
 const resHeader = document.createElement('h2');
 leftPane.append(resHeader);
 
@@ -120,21 +124,31 @@ function gameLoop() {
 						updateText(tabs.government.tab,'People');
 						tabs.government.unlock();
 						gameVars.progress++;
-						//saveTimeout = setTimeout(saveGame,gameVars.saveInterval*1000);
-						//createNavBar();
+					} else if (science['knapping'].researched && jobs.hunter.count < 1) {
+						//Helps bring the food income up earlier, and makes more sense maybe?
+						jobs.gatherer.decrease(1);
+						jobs.hunter.increase(1);
 					}
+					
 					break;
 				case 11:
-					//if we don't need those buttons any more
-					//delete the buttons!
-					//gameVars.era++;
+					if (gameVars.popCount >= 5) {
+						//we don't need those buttons any more
+						for( const name in buttons ) {
+							buttons[name].hide();
+						}
+						logMessage('You grow weary of menial tasks.');
+						gameVars.era++;
+					}
 					break;
 			}
 		case 1: //the era of science (and the normal game flow)
-			//TODO: Population module
-			//population slowly rises to cap, and drains food
-			//assign workers after division of labor
+			//TODO: make a flag function/class?
+			//usable here and on load
+			//state changes, onRaise action
+			//and just needs to interface with gameVars.flags and it'll auto-save!
 			
+			//TODO: check for starvation
 	}
 	
 	let timePassed =  Math.max(0,Math.min((currentTime-gameVars.lastTick)/1000,24*60*60)); //allows a maximum of 1 day to pass
@@ -191,14 +205,29 @@ function updatePopulation () { //returns time until next breakpoint
 			//console.log(`population added: ${newPop}`);
 			addPop = Math.floor(newPop);
 			gameVars.popCount += addPop;
-			//gameVars.people.push('Person'); //TODO: Give people random names and statistics
+			//gameVars.people.push('Person'); //TODO: people module
+			//Give people random names and statistics, and store their age and mastery.
 			resources.food.addSink(0.3,addPop,'pop',true);
 			if(science.thought.researched) {
 				jobs.gatherer.increase(addPop,true);
 				//TODO: give the person the job
+				//then the people module can update the job count
 			} else {
 				gameVars.jobs.idle += addPop;
 			}
+			
+			switch (gameVars.popCount) {
+				case 2:
+					logMessage('Another stranger arrives wanting warmth.');
+					break;
+				case 3:
+					logMessage('Another stranger approaches seeking sustenance.');
+					break;
+				case 4:
+					logMessage('Another stranger appears craving companionship.');
+					break;
+			}
+			
 		}
 	}
 	return nextBreakpoint;
