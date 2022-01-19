@@ -23,18 +23,18 @@
 <body>
 	<header>
 		<h1>A simple game</h1>
-		<nav><a href="https://github.com/adeeda/game/commits" target="_blank" id="version"></a></nav>
+		<nav><a href="https://github.com/adeeda/game/commits/main" target="_blank" id="version"></a></nav>
 	</header>
 	<noscript>
 		<p>This is a game so it sort of requires Javascript.</p>
 	</noscript>
 	<main>
-		<div id="left-pane"></div>
+		<div id="left-pane"><h2></h2></div>
 		<div id="middle-pane">
 			<div id="tab-bar"></div>
 			<div id="tab-pane"></div>
 		</div>	
-		<div id="right-pane"></div>
+		<div id="right-pane"><h2></h2><div id="log-pane"></div></div>
 	</main>
 	
 	<footer><a href="https://github.com/adeeda/game/issues" target="_blank">feedback</a><a href="https://github.com/adeeda/game" target="_blank">source</a></footer>
@@ -60,6 +60,28 @@
 		<p>Just me, so far. Check the about button for some of my inspirations.</p>
 		<p>I would of course love to thank my friends and family.</p>
 	</div>
+	<div id="options" class="popup">
+		<a class="close">close</a>
+		<h3>Options</h3>
+		<label>FPS:</label>
+		<select name="fps">
+			<option>1</option>
+			<option>12</option>
+			<option>24</option>
+			<option>30</option>
+			<option>60</option>
+			<option>144</option>
+		</select>
+		<br>
+		<label>Autosave:</label>
+		<select name="save">
+			<option value="15">15 seconds</option>
+			<option value="30">30 seconds</option>
+			<option value="60">1 minute</option>
+			<option value="300">5 minutes</option>
+		</select>
+	</div>
+	<div class="tooltip"></div>
 </body>
 
 </html>

@@ -1,6 +1,0 @@
-Name,Costs,Caps,Multipliers,Out Per Second,In Per Second,Upgrades (Name Prereq Amount Material),Dumb Name,Description,Prerequisite
-house,15;wood;25;earth,1;population,,,,brick house;firing;30;brick,shelter,Can hold people in it.,
-artwork,25;culture,100;culture,,0.01;culture,,,something pretty,It's nice to look at.,
-kiln,25;wood;50;earth,,,0.01;brick,,,ground cooker,,firing
-smelter,50;earth;10;brick,,,0.01;metal;0.0001;rare metal,0.5;wood;0.1;earth,,rock melter,,
-storage,20;wood;30;earth,100;wood;100;earth;100;remains;100;brick;100;rare earth;100;metal;100;rare metal,,,,,,Can hold things in it.,foresight

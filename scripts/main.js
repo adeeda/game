@@ -1,4 +1,4 @@
-const version = '0.0.1';
+const version = '0.0.2';
 
 //start by loading save
 let gameVars = localStorage.getItem('gameVars');
@@ -6,7 +6,7 @@ if(gameVars) {
 	gameVars = JSON.parse(gameVars);
 } else {
 	gameVars = {
-		title: 'Game Title',
+		title: 'Game',
 		fps: 12,
 		saveInterval: 30, //seconds
 		speedrun: true, //speeds up certain things if you know what you're doing
@@ -16,10 +16,9 @@ if(gameVars) {
 
 header.textContent = pageTitle.textContent = gameVars.title;
 updateText(vNumber,`v ${version}`);
-const resHeader = document.createElement('h2');
-leftPane.append(resHeader);
 
 createFooter();
+let tooltip=createTooltip();
 
 let tabs = {};
 let panes = {}; //Subscreens of tabs
@@ -30,7 +29,8 @@ let science = {};
 let scienceResearched = {}; //Used for saving
 let jobs = {};
 let gameInterval;	//declared here so we can change the framerate in the options menu
-let saveTimeout;	//with clearInterval()
+let saveInterval;	//with clearTimeout()
+
 
 initialize();
 
@@ -114,8 +114,8 @@ function gameLoop() {
 						updateText(tabs.science.tab,'Ideas');
 						updateText(tabs.main.tab,'Home');
 						resources.science.add(1);
-						resources.science.income = 0.1;
-						resources.population.income = 0.01;
+						resources.science.income += 0.2;
+						resources.population.income = 0.015;
 						gameVars.progress++;
 					}
 					//don't break here!
@@ -143,10 +143,8 @@ function gameLoop() {
 					break;
 			}
 		case 1: //the era of science (and the normal game flow)
-			//TODO: make a flag function/class?
-			//usable here and on load
-			//state changes, onRaise action
-			//and just needs to interface with gameVars.flags and it'll auto-save!
+			
+			//checkFlags(); //TODO
 			
 			//TODO: check for starvation
 	}
@@ -156,7 +154,7 @@ function gameLoop() {
 	
 	let remainingTime = timePassed;
 	while(remainingTime > 0) {
-		let lowestBreakpoint = Math.min(updatePopulation(),remainingTime);
+		let lowestBreakpoint = Math.min(updatePopulation(),remainingTime); //calls updatePopulation to get a breakpoint *and* update the population.
 		for ( const name in resources ) {
 			const thisBreakpoint = resources[name].getNextBreakpoint();
 			//console.log(`${name}: ${thisBreakpoint}`);
@@ -186,49 +184,17 @@ function gameLoop() {
 	for(const name in jobs) {
 		jobs[name].update();
 	}
-	updateText(idleDisp,`Idle: ${gameVars.jobs.idle}`);
+	updateText(idleDisp,`Idle: ${displayNumber(gameVars.jobs.idle,'discrete')}`);
+	
+	if(tooltip.active) {updateTooltip();}
 	
 	//Planning drag and drop: https://developer.mozilla.org/en-US/docs/Web/API/HTML_Drag_and_Drop_API
 	
 	//I think it's possible to import and export saves by just going through every localStorage item with localStorage.length and localStorage.key()
 	//could even put them in an object and JSON it?
 	//Do I need to sanitize and/or escape it?
-	gameVars.lastTick = currentTime;//-remainingTime*1000;
+	
+	gameVars.lastTick = currentTime;
+	gameInterval = setTimeout(gameLoop,1000/gameVars.fps);
 }
 
-function updatePopulation () { //returns time until next breakpoint
-	let nextBreakpoint = Infinity;
-	let newPop = resources.population.amount - gameVars.popCount;
-	if(newPop > 0) {
-		nextBreakpoint = (Math.floor(resources.population.amount) + 1 - resources.population.amount) / resources.population.rps;
-		if(newPop >= 1) {
-			//console.log(`population added: ${newPop}`);
-			addPop = Math.floor(newPop);
-			gameVars.popCount += addPop;
-			//gameVars.people.push('Person'); //TODO: people module
-			//Give people random names and statistics, and store their age and mastery.
-			resources.food.addSink(0.3,addPop,'pop',true);
-			if(science.thought.researched) {
-				jobs.gatherer.increase(addPop,true);
-				//TODO: give the person the job
-				//then the people module can update the job count
-			} else {
-				gameVars.jobs.idle += addPop;
-			}
-			
-			switch (gameVars.popCount) {
-				case 2:
-					logMessage('Another stranger arrives wanting warmth.');
-					break;
-				case 3:
-					logMessage('Another stranger approaches seeking sustenance.');
-					break;
-				case 4:
-					logMessage('Another stranger appears craving companionship.');
-					break;
-			}
-			
-		}
-	}
-	return nextBreakpoint;
-}

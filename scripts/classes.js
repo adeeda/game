@@ -23,7 +23,11 @@ class Resource {
 		this.txtRate = document.createElement('div');
 		this.bar.append(this.txtName,this.txtAmount,this.txtCap,this.txtRate);
 		
-		this.tooltip = createTooltip(this.txtRate);
+		this.tooltip = {
+			description: '',
+			cost: ''
+		};
+		setupTooltip(this.txtRate,this.tooltip);
 	}
 	
 	get displayName () {
@@ -39,8 +43,26 @@ class Resource {
 		if( (rps > 0 && this.amount === this.cap) || (rps < 0 && this.amount === 0) ) {
 			rps = 0;
 		}
-		if(science.time.researched) { //TODO: details with logistics
-			this.tooltip.style.opacity = 0;
+		if(rps < 0 && this.getNextBreakpoint() < 25) {
+			this.txtRate.style.color = 'red';
+		} else {
+			this.txtRate.style.color = 'inherit';
+		}
+		
+		//TODO: Time until cap/empty if foresight
+		if(science.time.researched) {
+			//TODO: details with logistics
+			this.tooltip.description = '';
+			if(science.foresight.researched) {
+				//TODO: Display time
+				if(rps > 0) {
+					this.tooltip.cost = `Time to cap: ${displayNumber(this.getNextBreakpoint(),'discrete of')} seconds`;
+				} else if(rps < 0) {
+					this.tooltip.cost = `Time to zero: ${displayNumber(this.getNextBreakpoint(),'discrete of')} seconds`;
+				} else {
+					this.tooltip.cost = '';
+				}
+			}
 			if(rps > 0) {
 				return `+${displayNumber(rps,'decimals')} /s`;
 			} else if(rps < 0) {
@@ -49,15 +71,12 @@ class Resource {
 				return '';
 			}
 		} else {
-			updateText(this.tooltip,`${(rps > 0) ? 'going up' : 'going down'}`);
+			this.tooltip.description = `${(rps > 0) ? 'going up' : 'going down'}`;
 			if(rps > 0) {
-				this.tooltip.style.opacity = 1;
 				return '^';
 			} else if (rps < 0) {
-				this.tooltip.style.opacity = 1;
 				return 'v';
 			} else {
-				this.tooltip.style.opacity = 0;
 				return '';
 			}
 		}
@@ -92,6 +111,7 @@ class Resource {
 	removeSource (plusRps, number, mechanism) {
 		this.income -= plusRps*number;
 		//TODO: search for matching mechanism, reduce by number and appropriate rps
+		if(Math.abs(this.income) < Number.EPSILON) {this.income = 0;}
 	}
 	addSink (minusRps, number, mechanism, unstoppable=false) {
 		//manage a list of mechanisms to cut off when out of resource
@@ -103,6 +123,7 @@ class Resource {
 		//called by mechanisms
 		//TODO: search for matching mechanism, reduce by number and appropriate rps
 		this.drain -= minusRps*number;
+		if(Math.abs(this.drain) < Number.EPSILON) {this.drain = 0;}
 	}
 	addMultiplier (multiplier, mechanism) {
 		this.multiplier *= multiplier;
@@ -148,12 +169,12 @@ class Resource {
 	update () {
 		if(this.active || this.amount >= 1) {
 			this.active = 1;
-			updateText(this.txtName,`${this.displayName}:`);
+			updateText(this.txtName,`${this.displayName}`);
 			updateText(this.txtAmount,`${displayNumber(this.amount,this.name === 'population' ? 'discrete' : '')}`);
 			if(science.foresight.researched) {
 				if(this.cap != Infinity) {updateText(this.txtCap,`/ ${displayNumber(this.cap)}`);}
 			}
-			updateText(this.txtRate,this.displayRPS);
+			if(this.name !== 'population') {updateText(this.txtRate,this.displayRPS);}
 			//TODO: dumbify()
 			//logistics allows the view of all the sources and multipliers
 		}
@@ -206,10 +227,13 @@ class Tab {
 class Button {
 	constructor (name, description, father, onClick) {
 		this.name = name;
-		this.btn = document.createElement('button');
+		//this.btn = document.createElement('button');
+		this.btn = document.createElement('div');
+		this.btn.setAttribute('class','btn');
 		updateText(this.btn,description);
 		father.append(this.btn);
 		this.btn.addEventListener('click',onClick);
+		this.disabled = false;
 	}
 	
 	hide() {
@@ -219,35 +243,48 @@ class Button {
 	
 	show() {
 		this.visible = true;
-		this.btn.style.display = 'block';
+		this.btn.style.display = 'flex';
 	}
 	
 	enable() {
-		this.btn.disabled = false;
+		this.btn.removeAttribute('disabled');
+		this.disabled = false;
 	}
 	
 	disable() {
-		this.btn.disabled = true;
+		this.btn.setAttribute('disabled','');
+		this.disabled = true;
 	}
 }
 
 class Building extends Button {
-	constructor (name, costs, caps, multipliers, outs, ins, upgrades, dumbName="", description, prereq) {
+	constructor (name, costs, caps, multipliers, outs, ins, dumbName="", description, prereq, upgrades) {
 		super(name, name, tabs.main.pane, () => {
 			//on click
-			let ok=true;
-			for (let i=1; i<this.costs.length; i+=2) {
-				if(!resources[this.costs[i]].consume(this.costs[i-1]*costMultiplier**this.number)) {
-					//somehow fail
-					logMessage(`You don't have the ${resources[this.costs[i]].displayName} for that. Something went wrong.`);
-					ok = false;
+			if(!this.disabled) {
+				let ok=true;
+				for (let i=1; i<this.costs.length; i+=2) {
+					if(!resources[this.costs[i]].consume(this.costs[i-1]*costMultiplier**this.number)) {
+						//somehow fail
+						logMessage(`You don't have the ${resources[this.costs[i]].displayName} for that. Something went wrong.`);
+						ok = false;
+						break;
+					}
+				}
+				if(ok) {
+					this.increase(1,true);
+					for(const name in buildings) {
+						buildings[name].update();
+					}
 				}
 			}
-			if(ok) {
-				this.increase(1,true);
-				this.update();
-			}
 		});
+		
+		this.body = document.createElement('div');
+		this.main = document.createElement('div');
+		this.body.append(this.main);
+		updateText(this.main,this.name);
+		this.btn.replaceChildren(this.body);
 		
 		if(dumbName) {this.dumbName = dumbName} else {this.dumbName=name;};
 		this.description = description;
@@ -257,12 +294,44 @@ class Building extends Button {
 		if(multipliers) {this.multipliers = multipliers.split(';');} else {this.multipliers = false;} //TODO
 		if(outs) {this.outs = outs.split(';');} else {this.outs = false;} //TODO
 		if(ins) {
-			//TODO: if any ins, add +/- mini buttons
 			this.ins = ins.split(';');
+			
+			//TODO: stop highlight of button if highlighting mini buttons
+			//Update: that might only be possible if I move the styling to javascript >:(
+			this.plusMinus = document.createElement('div');
+			this.plusMinus.setAttribute('class','plusminus');
+			
+			this.plus = document.createElement('div');
+			updateText(this.plus,'+');
+			this.plus.addEventListener('click', event => {
+				event.stopPropagation();
+				this.increase(1);
+			});
+			
+			this.minus = document.createElement('div');
+			updateText(this.minus,'-');
+			this.minus.addEventListener('click', event => {
+				event.stopPropagation();
+				this.decrease(1);
+			});
+			
+			this.plusMinus.append(this.plus,this.minus);
+			this.btn.append(this.plusMinus);
+			
 		} else {
 			this.ins = false;
 		}
-		if(upgrades) {this.upgrades = upgrades.split(';');} else {this.upgrades = false;} //TODO
+		
+		if(upgrades) {
+			this.upgrades = upgrades.split(';');
+			//TODO: if any upgrades, add upgrade mini button
+			this.upButton = document.createElement('div');
+			this.body.append(this.upButton);
+			//updateText(this.upButton,'test!')
+		} else {
+			this.upgrades = false;
+		}
+		
 		if(prereq) {this.prereq = prereq;} else {this.prereq = false;}
 			
 		this.number = 0;
@@ -277,8 +346,12 @@ class Building extends Button {
 		  // });
 		
 		this.hide();
-		this.btn.setAttribute('class','building');
-		this.tooltip = createTooltip(this.btn);
+		this.btn.setAttribute('building','');
+		this.tooltip = {
+			description: description,
+			cost: ''
+		};
+		setupTooltip(this.btn,this.tooltip);
 	}
 	
 	get displayName () {
@@ -305,7 +378,7 @@ class Building extends Button {
 			}
 			if(show) {
 				this.show();
-				updateText(this.btn,`${this.displayName}`);
+				updateText(this.main,`${this.displayName}`);
 			}
 		}
 		
@@ -320,7 +393,7 @@ class Building extends Button {
 				}
 			}
 			if (ok) {this.enable();}
-			updateText(this.tooltip,`${this.description} ${this.displayCosts}`);
+			this.tooltip.cost = this.displayCosts;
 		}
 	}
 	
@@ -342,25 +415,25 @@ class Building extends Button {
 		}
 		if(ok && actual > 0) {
 			this.show();
-			updateText(this.btn,`${this.displayName} ` + ((this.activeNumber < this.number) ? `(${this.activeNumber}/${this.number})` : `(${this.number})`));
+			updateText(this.main,`${this.displayName} ` + ((this.activeNumber < this.number) ? `(${this.activeNumber}/${this.number})` : `(${this.number})`));
 			if(this.caps) {
 				for (let i=1; i<this.caps.length; i+=2) {
-					resources[this.caps[i]].cap += this.caps[i-1]*by;
+					resources[this.caps[i]].cap += this.caps[i-1]*actual;
 				}
 			}
 			if(this.multipliers) {
 				for (let i=1; i<this.multipliers.length; i+=2) {
-					resources[this.multipliers[i]].addMultiplier(this.multipliers[i-1]*by,this);
+					resources[this.multipliers[i]].addMultiplier(this.multipliers[i-1]**actual,this);
 				}
 			}
 			if(this.outs) {
 				for (let i=1; i<this.outs.length; i+=2) {
-					resources[this.outs[i]].addSource(this.outs[i-1],by,this);
+					resources[this.outs[i]].addSource(this.outs[i-1],actual,this);
 				}
 			}
 			if(this.ins) {
 				for (let i=1; i<this.ins.length; i+=2) {
-					resources[this.ins[i]].addSink(this.ins[i-1],by,this);
+					resources[this.ins[i]].addSink(this.ins[i-1],actual,this);
 				}
 			}
 		}
@@ -377,7 +450,7 @@ class Building extends Button {
 			}
 			if(this.multipliers) {
 				for (let i=1; i<this.multipliers.length; i+=2) {
-					resources[this.multipliers[i]].removeMultiplier(this.multipliers[i-1]*actual,this);
+					resources[this.multipliers[i]].removeMultiplier(this.multipliers[i-1]**actual,this);
 				}
 			}
 			if(this.outs) {
@@ -393,16 +466,16 @@ class Building extends Button {
 		}
 		
 		this.activeNumber -= actual;
-		updateText(this.btn,`${this.displayName}` + ((this.activeNumber < this.number) ? `(${this.activeNumber}/${this.number})` : `(${this.number})`));
+		updateText(this.main,`${this.displayName}` + ((this.activeNumber < this.number) ? `(${this.activeNumber}/${this.number})` : `(${this.number})`));
 	}
 	
 	save() {
 		let saveString = `${this.number},${this.activeNumber}`;
-		localStorage.setItem(this.name,saveString);
+		localStorage.setItem(`buildings.${this.name}`,saveString);
 	}
 	
 	load() {
-		let saveString = localStorage.getItem(this.name);
+		let saveString = localStorage.getItem(`buildings.${this.name}`);
 		if(saveString) {
 			let things = saveString.split(',');
 			this.number = parseInt(things[0],10);
@@ -419,22 +492,23 @@ class Science extends Button {
 	constructor (name, prereqs, costs, description, message) {
 		super(name, name, tabs.science.pane, () => {
 			//when button is pressed
-			//actually consume the resources
-			let ok = true;
-			for (let i=1; i<this.costs.length; i+=2) {
-				if( !resources[this.costs[i]].consume(this.costs[i-1]) ) {
-					//somehow fail
-					logMessage(`You don't have the ${resources[this.costs[i]].displayName} for that. Something went wrong.`);
-					ok = false;
-					break;
+			if(!this.disabled) {
+				let ok = true;
+				for (let i=1; i<this.costs.length; i+=2) {
+					if( !resources[this.costs[i]].consume(this.costs[i-1]) ) {
+						//somehow fail
+						logMessage(`You don't have the ${resources[this.costs[i]].displayName} for that. Something went wrong.`);
+						ok = false;
+						break;
+					}
 				}
-			}
-			if (ok) {
-				this.researched = true;
-				scienceResearched[this.name] = true; //This is for an easy savestate
-				this.hide();
-				if(message) {
-					logMessage(message);
+				if (ok) {
+					this.researched = true;
+					scienceResearched[this.name] = true; //This is for an easy savestate
+					this.hide();
+					if(message) {
+						logMessage(message);
+					}
 				}
 			}
 		});
@@ -445,8 +519,12 @@ class Science extends Button {
 		if(costs) {this.costs = costs.split(';');} else {this.costs = false;}
 		this.description = description;
 		
-		if(description) {
-			this.tooltip = createTooltip(this.btn);
+		if(description || costs) {
+			this.tooltip = {
+				description: description,
+				cost: ''
+			};
+			setupTooltip(this.btn,this.tooltip);
 		}
 	}
 	
@@ -480,7 +558,7 @@ class Science extends Button {
 				
 				//TODO: Might not need to update this every frame, but where do I update it?
 				if(this.tooltip) {
-					updateText(this.tooltip,`${this.description} ${this.displayCosts}`);
+					this.tooltip.cost = this.displayCosts;
 				}
 			}
 		}
@@ -540,6 +618,11 @@ class Job {
 		});
 		
 		//TODO: Tooltip if logistics
+		this.tooltip = {
+			description: this.name,
+			cost: ''
+		};
+		setupTooltip(this.txt,this.tooltip);
 	}
 	
 	increase (by=1, isCreating=false) {
@@ -553,7 +636,7 @@ class Job {
 			if(!isCreating) {
 				gameVars.jobs.idle -= actual;
 			}
-			updateText(this.txtCount,`${this.count}`);
+			updateText(this.txtCount,`${displayNumber(this.count,'discrete')}`);
 		}
 	}
 	
@@ -566,7 +649,7 @@ class Job {
 			this.count -= actual;
 			gameVars.jobs[this.name] = this.count;
 			gameVars.jobs.idle += actual;
-			updateText(this.txtCount,`${this.count}`);
+			updateText(this.txtCount,`${displayNumber(this.count,'discrete')}`);
 		}
 	}
 	
@@ -595,7 +678,7 @@ class Job {
 	unlock () {
 		this.visible = true;
 		updateText(this.txt,`${this.name}s`);
-		updateText(this.txtCount,`${this.count}`);
+		updateText(this.txtCount,`${displayNumber(this.count,'discrete')}`);
 		this.plus.style.display = 'block';
 		this.minus.style.display = 'block';
 	}

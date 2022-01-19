@@ -2,10 +2,11 @@ function logMessage (message) {
 	let thing = document.createElement('div');
 	thing.setAttribute('class','log-message');
 	updateText(thing,message);
-	rightPane.prepend(thing);
+	logPane.prepend(thing);
 	return thing;
 }
 
+let optionsOpen = false;
 function createNavBar() {
 	const saveButton = document.createElement('a');
 	updateText(saveButton,'save');
@@ -16,7 +17,41 @@ function createNavBar() {
 	
 	const optionsButton = document.createElement('a');
 	updateText(optionsButton,'options');
-	//TODO options menu
+	optionsButton.addEventListener('click', event => {
+		if(optionsOpen) {
+			options.style.display = 'none';
+			optionsOpen = false;
+		} else {
+			options.style.display = 'block';
+			optionsOpen = true;
+		}
+		if(aboutOpen) {
+			about.style.display = 'none';
+			aboutOpen = false;
+		}
+		if(creditsOpen) {
+			credits.style.display = 'none';
+			creditsOpen = false;
+		}
+		event.preventDefault();
+	});
+	document.querySelector('#options > a.close').addEventListener('click', event => {
+		options.style.display = 'none';
+		optionsOpen = false;
+		event.preventDefault();
+	});
+	
+	//OPTIONS
+	const fpsSelector = document.querySelector('[name="fps"]');
+	fpsSelector.value = gameVars.fps;
+	fpsSelector.addEventListener('change', () => {
+		gameVars.fps = parseInt(fpsSelector.value,10);
+	});
+	const saveSelector = document.querySelector('[name="save"]');
+	saveSelector.value = gameVars.saveInterval;
+	saveSelector.addEventListener('change', () => {
+		gameVars.saveInterval = parseInt(saveSelector.value,10);
+	});
 	
 	const deleteSave = document.createElement('a');
 	updateText(deleteSave,'Delete Save');
@@ -32,34 +67,67 @@ function createNavBar() {
 	
 }
 
+let aboutOpen = false;
+let creditsOpen = false;
 function createFooter() {
 	const aboutButton = document.createElement('a');
 	updateText(aboutButton,'about');
 	aboutButton.addEventListener('click', event => {
-		about.style.display = 'block';
+		if(aboutOpen) {
+			about.style.display = 'none';
+			aboutOpen = false;
+		} else {
+			about.style.display = 'block';
+			aboutOpen = true;
+		}
 		event.preventDefault();
+		if(optionsOpen) {
+			options.style.display = 'none';
+			optionsOpen = false;
+		}
+		if(creditsOpen) {
+			credits.style.display = 'none';
+			creditsOpen = false;
+		}
 	});
 	document.querySelector('#about > .close').addEventListener('click', event => {
 		about.style.display = 'none';
+		aboutOpen = false;
 		event.preventDefault();
 	});
-	//TODO: Click anywhere to close
+	
 	
 	const creditsButton = document.createElement('a');
 	updateText(creditsButton,'credits');
 	creditsButton.addEventListener('click', event => {
-		credits.style.display = 'block';
+		if(creditsOpen) {
+			credits.style.display = 'none';
+			creditsOpen = false;
+		} else {
+			credits.style.display = 'block';
+			creditsOpen = true;
+		}
+		
 		event.preventDefault();
+		if(optionsOpen) {
+			options.style.display = 'none';
+			optionsOpen = false;
+		}
+		if(aboutOpen) {
+			about.style.display = 'none';
+			aboutOpen = false;
+		}
 	});
 	document.querySelector('#credits > .close').addEventListener('click', event => {
 		credits.style.display = 'none';
+		creditsOpen = false;
 		event.preventDefault();
 	});
-	//TODO: Click anywhere to close
 	
 	footer.prepend(aboutButton,creditsButton);
 }
 
+let test;
 function initialize () {
 	
 	tabs.main = new Tab ('main',true,true);
@@ -76,9 +144,19 @@ function initialize () {
 		fileInput.setAttribute('type','file');
 		fileInput.setAttribute('multiple','');
 		logMessage("Hello! The following file input is for testing locally. You shouldn't see this, so let me know if you do. Thanks!");
-		logMessage('Upload 3 CSV files').append(fileInput);
+		logMessage('Upload files:').append(fileInput);
 		fileInput.addEventListener('input', () => {
-			//Need three reads here
+			
+			let resFile, sciFile, buildFile, testFile
+			for (let i=0,l=fileInput.files.length; i<l; i++) {
+				if(fileInput.files[i].name === 'resources.tsv') {
+					resFile = fileInput.files[i];
+				} else if(fileInput.files[i].name === 'science.tsv') {
+					sciFile = fileInput.files[i];
+				} else if(fileInput.files[i].name === 'buildings.tsv') {
+					buildFile = fileInput.files[i];
+				}
+			}
 			
 			const resReader = new FileReader();
 			resReader.addEventListener("load", () => {
@@ -86,7 +164,7 @@ function initialize () {
 				buildResources(resReader.result.replaceAll('\r',''));
 				finalInit();
 			}, false);
-			resReader.readAsText(fileInput.files[1]); //resources
+			resReader.readAsText(resFile);
 			
 			const sciReader = new FileReader();
 			sciReader.addEventListener("load", () => {
@@ -94,35 +172,35 @@ function initialize () {
 				buildScience(sciReader.result.replaceAll('\r',''));
 				finalInit();
 			}, false);
-			sciReader.readAsText(fileInput.files[2]); //science
+			sciReader.readAsText(sciFile);
 			
-			const builReader = new FileReader();
-			builReader.addEventListener("load", () => {
-				//console.log(builReader.result);
-				buildBuildings(builReader.result.replaceAll('\r',''));
+			const buildReader = new FileReader();
+			buildReader.addEventListener("load", () => {
+				//console.log(buildReader.result);
+				buildBuildings(buildReader.result.replaceAll('\r',''));
 				finalInit();
 			}, false);
-			builReader.readAsText(fileInput.files[0]); //buildings
+			buildReader.readAsText(buildFile);
 		});
 		//TODO: Dev features?
 	} else {
 		//it's on the internet
 		//try to find the resources file
-		fetch('design/resources.csv')
+		fetch('design/resources.tsv')
 			.then(response => response.text())
 			.then(text => {
 				buildResources(text.replaceAll('\r',''));
 				finalInit();
 			});
 		//try to find the science file
-		fetch('design/science.csv')
+		fetch('design/science.tsv')
 			.then(response => response.text())
 			.then(text => {
 				buildScience(text.replaceAll('\r',''));
 				finalInit();
 			});
 		//try to find the buildings file
-		fetch('design/buildings.csv')
+		fetch('design/buildings.tsv')
 			.then(response => response.text())
 			.then(text => {
 				buildBuildings(text.replaceAll('\r',''));
@@ -133,7 +211,7 @@ function initialize () {
 	function buildResources (csv) {
 		const attributes = csv.split('\n');
 		for (let i=1; i<attributes.length; i++) {
-			attributes[i] = attributes[i].split(',');
+			attributes[i] = attributes[i].split('\t');
 			const name = attributes[i][0];
 			if(name) {
 				resources[name] = new Resource(...attributes[i]);
@@ -148,7 +226,7 @@ function initialize () {
 		if (saveString) {scienceResearched = JSON.parse(saveString);}
 		const attributes = csv.split('\n');
 		for (let i=1; i<attributes.length; i++) {
-			attributes[i] = attributes[i].split(',');
+			attributes[i] = attributes[i].split('\t');
 			const name = attributes[i][0];
 			if(name) {
 				science[name] = new Science(...attributes[i]);
@@ -163,7 +241,7 @@ function initialize () {
 	function buildBuildings (csv) {
 		const attributes = csv.split('\n');
 		for (let i=1; i<attributes.length; i++) {
-			attributes[i] = attributes[i].split(',');
+			attributes[i] = attributes[i].split('\t');
 			const name = attributes[i][0];
 			if(name) {
 				buildings[name] = new Building(...attributes[i]);
@@ -227,24 +305,33 @@ function initialize () {
 					tabs.science.unlock();
 					updateText(tabs.government.tab,'People');
 					tabs.government.unlock();
-					updateText(resHeader,'Things');
+					updateText(resHeader,science.language.researched ? 'Resources' : 'Things');
 					resources.food.drain += 0.3;
-					resources.science.income = 0.1;
-					resources.population.income = 0.01;
+					resources.science.income += 0.2;
+					resources.population.income = 0.015;
 					//updateText(resHeader,'Resources');
 					break;
 			}
 			
 			createNavBar();
-			saveTimeout = setTimeout(saveGame,gameVars.saveInterval*1000);
+			saveInterval = setTimeout(saveGame,gameVars.saveInterval*1000);
 			for(const name in buildings) {
 				buildings[name].load();
 			}
 			if(gameVars.popCount > 0) {
 				resources.food.addSink(0.3,gameVars.popCount,'pop',true); //TODO: more things will depend on population?
 			}
+			
+			//loadFlags(); //TODO
+			
 			if(!gameVars.lastTick) {gameVars.lastTick = Date.now();}
-			gameInterval = setInterval(gameLoop,1000/gameVars.fps);
+			
+			if(version !== gameVars.version) {
+				logMessage(`The game has updated! Your save is from version ${gameVars.version}. If the game breaks, you may have to delete your save.`);
+				gameVars.version = version;
+			}
+			
+			gameLoop();
 		}
 	}
 }
@@ -252,7 +339,7 @@ function initialize () {
 function createButtons () {
 	buttons.foodButton = new Button('food','Gather food',tabs.main.pane,() => resources.food.add());
 	tabs.main.pane.prepend(buttons.foodButton.btn);
-	buttons.foodButton.btn.setAttribute('class','building');
+	buttons.foodButton.btn.setAttribute('building','');
 	
 	buttons.collectTinder = new Button('tinder', 'Collect tinder', tabs.main.pane, () => {
 		if(resources.food.consume(0.3)) {
@@ -262,42 +349,44 @@ function createButtons () {
 		}
 	});
 	buttons.foodButton.btn.after(buttons.collectTinder.btn);
-	buttons.collectTinder.btn.setAttribute('class','building');
+	buttons.collectTinder.btn.setAttribute('building','');
 	
 	let fireExists = false;
 	buttons.lightFire = new Button('fire','Light fire',tabs.main.pane, () => {
-		if(resources.wood.amount > 5) {
-			if(resources.food.amount > 2) {
-				resources.wood.consume(5);
-				resources.food.consume(2);
-				logMessage('You light a warm fire, as your parents showed you. It is vulnerable to the elements.');
-				gameVars.progress++;
-				updateText(tabs.main.tab,'a fire');
-				fireExists = true;
-				buttons.lightFire.disable();
-				var fireTimeout = setTimeout(() => {
-					clearTimeout(fireTimeout);
-					if(gameVars.progress <= 5) {
-						logMessage('The fire has gone out.');
-						gameVars.progress--;
-						updateText(tabs.main.tab,'wilderness');
-						gameVars.speedrun = false;
-						fireExists = false;
-						buttons.lightFire.enable();
-					}
-				}, 1000*30);
-				buttons.digFoundation.show();
+		if(!buttons.lightFire.disabled) {
+			if(resources.wood.amount > 5) {
+				if(resources.food.amount > 2) {
+					resources.wood.consume(5);
+					resources.food.consume(2);
+					logMessage('You light a warm fire, as your parents showed you. It is vulnerable to the elements.');
+					gameVars.progress++;
+					updateText(tabs.main.tab,'a fire');
+					fireExists = true;
+					buttons.lightFire.disable();
+					var fireTimeout = setTimeout(() => {
+						clearTimeout(fireTimeout);
+						if(gameVars.progress <= 5) {
+							logMessage('The fire has gone out.');
+							gameVars.progress--;
+							updateText(tabs.main.tab,'wilderness');
+							gameVars.speedrun = false;
+							fireExists = false;
+							buttons.lightFire.enable();
+						}
+					}, 1000*30);
+					buttons.digFoundation.show();
+				} else {
+					logMessage('You are too hungry to light a fire right now.');
+				}
 			} else {
-				logMessage('You are too hungry to light a fire right now.');
+				resources.wood.amount = 0;
+				logMessage('You try to light a fire, but all the pieces burn away too quickly.');
+				gameVars.speedrun = false;
 			}
-		} else {
-			resources.wood.amount = 0;
-			logMessage('You try to light a fire, but all the pieces burn away too quickly.');
-			gameVars.speedrun = false;
 		}
 	});
 	buttons.collectTinder.btn.after(buttons.lightFire.btn);
-	buttons.lightFire.btn.setAttribute('class','building');
+	buttons.lightFire.btn.setAttribute('building','');
 	
 	buttons.digFoundation = new Button ('dig','Dig a foundation',tabs.main.pane, () => {
 		if(resources.food.amount > 3) {
@@ -312,7 +401,7 @@ function createButtons () {
 		}
 	});
 	buttons.lightFire.btn.after(buttons.digFoundation.btn);
-	buttons.digFoundation.btn.setAttribute('class','building');
+	buttons.digFoundation.btn.setAttribute('building','');
 	
 	for (const name in buttons) {
 		buttons[name].hide();
@@ -326,14 +415,52 @@ function createJobs () {
 	updateText(idleDisp,`Idle: ${gameVars.jobs.idle}`);
 	tabs.government.pane.append(idleDisp);
 	
-	jobs.gatherer = new Job('gatherer',[0.3,'food',0.1,'wood']);
+	jobs.gatherer = new Job('gatherer',[0.3,'food',0.1,'wood'],'');
 	jobs.hunter = new Job('hunter',[0.7,'food',0.001,'remains'],'knapping');
-	jobs.digger = new Job('digger',[0.2,'earth',0.002,'rare earth']);
+	jobs.digger = new Job('digger',[0.2,'earth',0.002,'rare earth'],'');
 	jobs.woodcutter = new Job('woodcutter',[0.3,'wood'],'knapping');
+	jobs.thinker = new Job('thinker',[0.1,'science'],'teaching');
 	
 	for( const name in jobs ) {
 		jobs[name].load();
 	}
+}
+
+function updatePopulation () { //returns time until next breakpoint
+	let nextBreakpoint = Infinity;
+	let newPop = resources.population.amount - gameVars.popCount;
+	if(newPop > 0) {
+		nextBreakpoint = (Math.floor(resources.population.amount) + 1 - resources.population.amount) / resources.population.rps;
+		if(newPop >= 1) {
+			//console.log(`population added: ${newPop}`);
+			addPop = Math.floor(newPop);
+			gameVars.popCount += addPop;
+			//gameVars.people.push('Person'); //TODO: people module
+			//Give people random names and statistics, and store their age and mastery.
+			resources.food.addSink(0.3,addPop,'pop',true);
+			if(science.thought.researched) {
+				jobs.gatherer.increase(addPop,true);
+				//TODO: give the person the job
+				//then the people module can update the job count
+			} else {
+				gameVars.jobs.idle += addPop;
+			}
+			
+			switch (gameVars.popCount) {
+				case 2:
+					logMessage('Another stranger arrives wanting warmth.');
+					break;
+				case 3:
+					logMessage('Another stranger approaches seeking sustenance.');
+					break;
+				case 4:
+					logMessage('Another stranger appears, craving companionship.');
+					break;
+			}
+			
+		}
+	}
+	return nextBreakpoint;
 }
 
 function saveGame () {
@@ -346,22 +473,51 @@ function saveGame () {
 		buildings[name].save();
 	}
 	console.log('Game saved!');
-	clearTimeout(saveTimeout);
-	saveTimeout = setTimeout(saveGame,gameVars.saveInterval*1000);
+	//TODO: Update fleeting header with no transition and opacity, then update its transition and opacity again.
+	clearTimeout(saveInterval);
+	saveInterval = setTimeout(saveGame,gameVars.saveInterval*1000);
 }
 
-function createTooltip (daddy) {
-	if (daddy instanceof Element) {
-		let thing = document.createElement('div');
-		thing.setAttribute('class','tooltip');
-		daddy.append(thing);
-		return thing;
+//This is only to be run once, I don't know why I made it a function.
+function createTooltip () {
+	let tooltip = document.querySelector('.tooltip');
+	tooltip.description = document.createElement('div');
+	tooltip.cost = document.createElement('div');
+	tooltip.append(tooltip.description,tooltip.cost);
+	tooltip.style.display = 'none';
+	tooltip.active = false;
+	return tooltip;
+}
+
+//source is defined and updated by the source.
+function setupTooltip (hover, source) {
+	if(hover instanceof Element) {
+		hover.addEventListener('mouseover', () => {
+			tooltip.source = source;
+			updateTooltip();
+			let rect = hover.getBoundingClientRect();
+			tooltip.style.left = `calc(${rect.right}px + 0.75em)`;
+			tooltip.style.top = `calc(${rect.top}px + 0.5em)`;
+			tooltip.style.display = 'block';
+			tooltip.active = true;
+		});
+		hover.addEventListener('mouseleave', () => {
+			tooltip.style.display = 'none';
+			tooltip.active = false;
+		});
+		//TODO: Add touchstart and touchend, with preventDefault();
 	} else {
-		throw('Not a DOM element dumbass!');
+		throw('Not a DOM element dunkass!');
 	}
 }
 
-function updateText (elmnt, txt) { //this is to get around textContent deleting children, and therefore my lovely tooltips.
+function updateTooltip () {
+	//TODO: Hide parts if no content. Also add lines eventually?
+	updateText(tooltip.description,tooltip.source.description);
+	updateText(tooltip.cost,tooltip.source.cost);
+}
+
+function updateText (elmnt, txt) { //this is to get around textContent deleting children.
 	if (elmnt instanceof Element) {
 		let child = elmnt.firstChild;
 		if(child) {
@@ -398,13 +554,13 @@ function displayNumber (number, type='') {
 		} else if(number < 100) {
 			txt = 'a lot' + ((type.includes('of')) ? ' of' : '');
 		} else if(number < 150) {
-			txt = 'much';
+			txt = type.includes('discrete') ? 'many' : 'much';
 		} else if(number < 200) {
 			txt = 'lots' + ((type.includes('of')) ? ' of' : '');
 		} else if(number < 250) {
 			txt = 'a ton' + ((type.includes('of')) ? ' of' : '');
 		} else {
-			txt = 'too much';
+			txt = type.includes('discrete') ? 'too many' : 'too much';
 		}
 	} else {
 		if(type.includes('discrete')) {
