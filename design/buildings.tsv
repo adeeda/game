@@ -1,7 +1,8 @@
 Name	Costs	Caps	Multipliers	Out Per Second	In Per Second	Dumb Name	Description	Prerequisite	Upgrades (Name Prereq Amount Material Effect)
-house	15;wood;25;earth	1;population				shelter	Can hold people.		log house;;15;wood;cap;1;population;brick house;firing;30;brick;cap;1;population
-storage	20;wood;30;earth	100;wood;100;earth;100;remains;100;brick;100;rare earth;100;metal;100;rare metal					Can hold things.	foresight	earthenware;firing;10;brick;cap;100;food
+house	15;wood;25;earth	1;population				shelter	Can hold people.		log house;;15;wood;cap;1;population;brick house;pottery;30;brick;cap;1;population
+storage	20;wood;30;earth	100;wood;100;earth;100;remains;100;brick;100;rare earth;100;metal;100;rare metal					Can hold things.	foresight	earthenware;pottery;10;brick;cap;100;food
 writing	25;science	50;science	1.1;science;1.1;culture	0.001;culture		instructions	Write that down!	pictographs	books;paper;
-kiln	25;wood;50;earth			0.01;brick	0.1;wood;0.02;earth	ground cooker		firing	
+kiln	25;wood;50;earth			0.01;brick	0.1;wood;0.02;earth	ground cooker		pottery	
 smelter	50;earth;10;brick			0.01;metal;0.00001;rare metal	0.5;wood;0.1;earth	rock melter		charcoal	
 artwork	25;culture	100;culture		0.01;culture		something pretty	It's nice to look at.	art	
+pasture	100;wood;100;food							agriculture	farm

@@ -1,18 +1,27 @@
-Name	Prerequisites	Costs	Description	Log Message
-thought			? ? ? ?	The thought bubbles up inside you. Then there are . . . More.
-knapping	thought	5;science	Shaping stones with other stones.	A variety of stone tools expands your options. Your friend picks up a spear.
-division of labor	knapping	10;science	I do this and you do that.	Different people can contribute in different ways.
-counting	thought	15;science	Use your fingers.	Counting. This one is a game changer.
-time	counting	20;science	Counting suns.	This shall be the first day.
-symbols	counting	25;science	This thing here represents that thing.	Symbolic.
-cooking	thought	30;science	Fire is delicious.	Heating food makes it better.
-foresight	time	35;science	To see what cometh.	You must prepare.
-teaching	symbols	40;science	Transmitting thoughts.	Your comrades must learn.
-pictographs	symbols	45;science	Putting symbols on rocks.	With these you can hold more thoughts.
-firing	cooking	150;science	You can cook not-food as well.	What happens if you cook the ground?
-numbers	symbols	150;science	Beyond counting.	
-mathematics	numbers	200;science	Maths!	
-art	symbols	100;culture	Art!	
-language	symbols	200;science;100;culture	Language!	
-charcoal	firing	300;science		
-logistics	mathematics	500;science	Logistics!	
+Name	Prerequisites	Costs	Description	Log Message	Very Approximate Date	
+thought			? ? ? ?	The thought bubbles up inside you. Then there are . . . More.		
+knapping	thought	5;science	Shaping stones with other stones.	A variety of stone tools expands your options. Your friend picks up a spear.	3.5 Mya	
+division of labor	knapping	10;science	I do this and you do that.	Different people can contribute in different ways.		
+counting	thought	15;science	Use your fingers.	Counting. This one is a game changer.		
+cooking	thought	20;science	Fire is delicious.	Heating food makes it better.	800,000 ya	
+time	counting	25;science	Counting suns.	This shall be the first day.		
+symbols	counting	30;science	This thing here represents that thing.			
+foresight	time	35;science	To see what cometh.	You must prepare.		
+teaching	symbols	40;science	Transmitting thoughts.	Your comrades must learn.		
+pictographs	symbols	45;science	Putting symbols on rocks.	With these you can hold more thoughts.	6000 ya	
+numbers	symbols	100;science	Beyond counting.	The numbers, they're everywhere!		
+language	symbols	200;science;100;culture	More complex communication.	Might as well have a word for everything.	100,000 BC	
+art	symbols	200;culture			80,000 ya	
+pottery	cooking	300;science	You can cook not-food as well.	What happens if you cook the ground?	30,000 BC	
+charcoal	pottery	400;science	Sometimes, burnt wood still burns.		30,000 - 4000 BC	
+calendar	time	500;science			15,000 ya	
+domestication	division of labor	600;science			10,000 BC	
+agriculture	calendar;division of labor	600;science			10,000 BC	
+smelting		700;science			6500 BC	
+names	language	200;culture			3300 BC	
+mathematics	numbers	800;science	Combining numbers.		3000 BC	
+logistics	mathematics	2000;science				
+						
+						
+					4000 BC	bronze
+					1500 BC	iron

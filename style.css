@@ -109,6 +109,11 @@ a:hover {
 	padding-top: 0.5em;
 }
 
+/* TODO: Sections */
+section {
+	
+}
+
 .btn-grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
@@ -136,6 +141,7 @@ button.small {
 	text-transform: capitalize;
 	min-width: 10em;
 	max-width: 30em;
+	transition: all 0.1s;
 }
 .btn, .btn div {
 	display: flex;
@@ -151,6 +157,7 @@ button.small {
 .btn > div > div {
 	flex: 1;
 	min-width: 1.5em;
+	border-radius: 0.3em;
 }
 .btn > div.plusminus > div:hover {
 	background-color: var(--light-color);
@@ -222,6 +229,7 @@ button.small {
 	box-shadow: 0.2em 0.2em 0.5em;
 	padding-left: 3em;
 	padding-right: 2em;
+	overflow: auto;
 }
 .popup > a.close {
 	position: absolute;

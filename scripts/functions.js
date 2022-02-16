@@ -127,13 +127,17 @@ function createFooter() {
 	footer.prepend(aboutButton,creditsButton);
 }
 
-let test;
 function initialize () {
 	
+	//Set up tabs
 	tabs.main = new Tab ('main',true,true);
 	tabs.main.pane.setAttribute('class','btn-grid');
 	tabs.science = new Tab ('science');
+	sections.newScience = new Section ('New',tabs.science.pane,true,true);
+	sections.researched = new Section ('Researched',tabs.science.pane);
 	tabs.government = new Tab ('government');
+	sections.jobs = new Section ('Jobs',tabs.government.pane,true,true);
+	sections.population = new Section ('Roster',tabs.government.pane);
 	
 	let allGreen = {};
 	
@@ -146,41 +150,44 @@ function initialize () {
 		logMessage("Hello! The following file input is for testing locally. You shouldn't see this, so let me know if you do. Thanks!");
 		logMessage('Upload files:').append(fileInput);
 		fileInput.addEventListener('input', () => {
-			
-			let resFile, sciFile, buildFile, testFile
 			for (let i=0,l=fileInput.files.length; i<l; i++) {
-				if(fileInput.files[i].name === 'resources.tsv') {
-					resFile = fileInput.files[i];
-				} else if(fileInput.files[i].name === 'science.tsv') {
-					sciFile = fileInput.files[i];
-				} else if(fileInput.files[i].name === 'buildings.tsv') {
-					buildFile = fileInput.files[i];
+				const reader = new FileReader();
+				let file = fileInput.files[i];
+				
+				if(file.name === 'resources.tsv') {
+					reader.addEventListener('load', () => {
+						buildResources(reader.result.replaceAll('\r',''));
+						finalInit();
+					}, false);
+					reader.readAsText(file);
+					
+				} else if(file.name === 'science.tsv') {
+					reader.addEventListener('load', () => {
+						buildScience(reader.result.replaceAll('\r',''));
+						finalInit();
+					}, false);
+					reader.readAsText(file);
+					
+				} else if(file.name === 'buildings.tsv') {
+					reader.addEventListener('load', () => {
+						buildBuildings(reader.result.replaceAll('\r',''));
+						finalInit();
+					}, false);
+					reader.readAsText(file);
+					
+				} else if(file.name === 'firstnames.csv') {
+					reader.addEventListener('load', () => {
+						buildNames(reader.result.replaceAll('\r',''));
+					}, false);
+					reader.readAsText(file);
+					
+				} else if(file.name === 'surnames.csv') {
+					reader.addEventListener('load', () => {
+						buildSurnames(reader.result.replaceAll('\r',''));
+					}, false);
+					reader.readAsText(file);
 				}
 			}
-			
-			const resReader = new FileReader();
-			resReader.addEventListener("load", () => {
-				//console.log(resReader.result);
-				buildResources(resReader.result.replaceAll('\r',''));
-				finalInit();
-			}, false);
-			resReader.readAsText(resFile);
-			
-			const sciReader = new FileReader();
-			sciReader.addEventListener("load", () => {
-				//console.log(sciReader.result);
-				buildScience(sciReader.result.replaceAll('\r',''));
-				finalInit();
-			}, false);
-			sciReader.readAsText(sciFile);
-			
-			const buildReader = new FileReader();
-			buildReader.addEventListener("load", () => {
-				//console.log(buildReader.result);
-				buildBuildings(buildReader.result.replaceAll('\r',''));
-				finalInit();
-			}, false);
-			buildReader.readAsText(buildFile);
 		});
 		//TODO: Dev features?
 	} else {
@@ -206,10 +213,21 @@ function initialize () {
 				buildBuildings(text.replaceAll('\r',''));
 				finalInit();
 			});
+		//try to find name files
+		fetch('design/firstnames.csv')
+			.then(response => response.text())
+			.then(text => {
+				buildNames(text.replaceAll('\r',''));
+			});
+		fetch('design/firstnames.csv')
+			.then(response => response.text())
+			.then(text => {
+				buildSurnames(text.replaceAll('\r',''));
+			});
 	}
 	
-	function buildResources (csv) {
-		const attributes = csv.split('\n');
+	function buildResources (tsv) {
+		const attributes = tsv.split('\n');
 		for (let i=1; i<attributes.length; i++) {
 			attributes[i] = attributes[i].split('\t');
 			const name = attributes[i][0];
@@ -221,10 +239,10 @@ function initialize () {
 		allGreen.resources = true;
 	}
 	
-	function buildScience (csv) {
+	function buildScience (tsv) {
 		let saveString = localStorage.getItem('science');
 		if (saveString) {scienceResearched = JSON.parse(saveString);}
-		const attributes = csv.split('\n');
+		const attributes = tsv.split('\n');
 		for (let i=1; i<attributes.length; i++) {
 			attributes[i] = attributes[i].split('\t');
 			const name = attributes[i][0];
@@ -238,8 +256,8 @@ function initialize () {
 		allGreen.science = true;
 	}
 	
-	function buildBuildings (csv) {
-		const attributes = csv.split('\n');
+	function buildBuildings (tsv) {
+		const attributes = tsv.split('\n');
 		for (let i=1; i<attributes.length; i++) {
 			attributes[i] = attributes[i].split('\t');
 			const name = attributes[i][0];
@@ -250,13 +268,28 @@ function initialize () {
 		allGreen.buildings = true;
 	}
 	
+	function buildNames (csv) {
+		const lines = csv.split('\n');
+		for (let i=0,l=lines.length; i<l; i++) {
+			names.push(lines[i].split(',')[0]);
+		}
+	}
+	
+	function buildSurnames (csv) {
+		const lines = csv.split('\n');
+		for (let i=0,l=lines.length; i<l; i++) {
+			surnames.push(lines[i].split(',')[0]);
+		}
+	}
+	
 	function finalInit() {
 		//If all things have been built, proceed, else do nothing.
 		console.log(`Resources: ${allGreen.resources ? 'ok':'X'}; Science: ${allGreen.science ? 'ok':'X'}; Buildings: ${allGreen.buildings ? 'ok':'X'}`);
 		if(allGreen.resources && allGreen.science && allGreen.buildings) {
 		
-			rightPane.replaceChildren(); //clears any devlog things
+			logPane.replaceChildren(); //clears any devlog things
 			createJobs();
+			
 			if(!gameVars.era) {gameVars.era = 0;}
 			//switch based on era
 			switch (gameVars.era) {
@@ -281,7 +314,8 @@ function initialize () {
 							gameVars.progress = 4;
 							resources.population.amount = 0;
 							gameVars.popCount = 0;
-							gameVars.jobs.idle = 0;
+							gameVars.people = [];
+							gameVars.idle = 0;
 							updateText(tabs.main.tab,'a shelter');
 							resources.food.amount = 0;
 							buttons.lightFire.show();
@@ -290,10 +324,12 @@ function initialize () {
 							updateText(tabs.science.tab,'? ? ? ?');
 							tabs.science.unlock();
 							buttons.digFoundation.show();
+							resources.wood.addSink(0.1, 1, 'fire', true)
 						} else {
 							logMessage('Something tugs at your mind.');
 							tabs.science.unlock();
 							buttons.digFoundation.show();
+							resources.wood.addSink(0.1, 1, 'fire', true)
 							gameVars.progress = 9;
 						}
 					}
@@ -308,8 +344,7 @@ function initialize () {
 					updateText(resHeader,science.language.researched ? 'Resources' : 'Things');
 					resources.food.drain += 0.3;
 					resources.science.income += 0.2;
-					resources.population.income = 0.015;
-					//updateText(resHeader,'Resources');
+					resources.wood.addSink(0.1, 1, 'fire', true)
 					break;
 			}
 			
@@ -319,10 +354,15 @@ function initialize () {
 				buildings[name].load();
 			}
 			if(gameVars.popCount > 0) {
-				resources.food.addSink(0.3,gameVars.popCount,'pop',true); //TODO: more things will depend on population?
+				resources.food.addSink(0.3,gameVars.popCount,'population',true); //TODO: more things will depend on population?
+			}
+			for(let i=0; i<gameVars.popCount; i++) {
+				gameVars.people[i] = Object.assign(new Person, gameVars.people[i]);
+				//This makes each person an actual Person
+				gameVars.people[i].load();
 			}
 			
-			//loadFlags(); //TODO
+			loadFlags();
 			
 			if(!gameVars.lastTick) {gameVars.lastTick = Date.now();}
 			
@@ -408,44 +448,78 @@ function createButtons () {
 	}
 }
 
-function createJobs () {
-	if(!gameVars.jobs) {gameVars.jobs = {};}
-	if(!gameVars.jobs.idle) {gameVars.jobs.idle = 0;}
+function checkFlags () {
 	
-	updateText(idleDisp,`Idle: ${gameVars.jobs.idle}`);
-	tabs.government.pane.append(idleDisp);
+}
+
+function loadFlags () {
+	if(science.cooking.researched) {resources.food.addMultiplier(1.6, 'cooking');}
+	if(science.names.researched) {sections.population.unlock();}
+}
+
+function checkScienceFlags(sci) { //This function is run when a science is researched
+	switch(sci) {
+		case 'counting':
+		case 'numbers':
+			for (const name in jobs) {
+				if(jobs[name].visible) {jobs[name].unlock();} //Updates the number
+			}
+			for (const name in buildings) {
+				buildings[name].decrease(0); //Updates the text content.
+			}
+			break;
+		case 'language':
+			for (const name in buildings) {
+				buildings[name].decrease(0); //Updates the text content.
+			}
+			updateText(resHeader,'Resources');
+			break;
+		case 'time':
+			gameVars.days = 0;
+			break;
+		case 'cooking':
+			resources.food.addMultiplier(1.6, 'cooking');
+			break;
+		case 'calendar':
+			gameVars.years = 0;
+			break;
+		case 'names':
+			sections.population.unlock();
+			break;
+	}
+}
+
+function createJobs () {
+	if(!gameVars.idle) {gameVars.idle = 0;}
+	
+	updateText(idleDisp,`Idle: ${gameVars.idle}`);
+	sections.jobs.pane.append(idleDisp);
 	
 	jobs.gatherer = new Job('gatherer',[0.3,'food',0.1,'wood'],'');
-	jobs.hunter = new Job('hunter',[0.7,'food',0.001,'remains'],'knapping');
+	jobs.hunter = new Job('hunter',[0.4,'food',0.001,'remains'],'knapping');
 	jobs.digger = new Job('digger',[0.2,'earth',0.002,'rare earth'],'');
 	jobs.woodcutter = new Job('woodcutter',[0.3,'wood'],'knapping');
 	jobs.thinker = new Job('thinker',[0.1,'science'],'teaching');
 	
-	for( const name in jobs ) {
-		jobs[name].load();
-	}
 }
 
 function updatePopulation () { //returns time until next breakpoint
 	let nextBreakpoint = Infinity;
 	let newPop = resources.population.amount - gameVars.popCount;
-	if(newPop > 0) {
-		nextBreakpoint = (Math.floor(resources.population.amount) + 1 - resources.population.amount) / resources.population.rps;
-		if(newPop >= 1) {
-			//console.log(`population added: ${newPop}`);
-			addPop = Math.floor(newPop);
-			gameVars.popCount += addPop;
-			//gameVars.people.push('Person'); //TODO: people module
-			//Give people random names and statistics, and store their age and mastery.
-			resources.food.addSink(0.3,addPop,'pop',true);
-			if(science.thought.researched) {
-				jobs.gatherer.increase(addPop,true);
-				//TODO: give the person the job
-				//then the people module can update the job count
-			} else {
-				gameVars.jobs.idle += addPop;
-			}
-			
+	let popPS = resources.population.rps;
+	
+	if(popPS > 0) {
+		nextBreakpoint = (Math.floor(resources.population.amount) + 1 - resources.population.amount) / popPS;
+	} else if(popPS < 0) {
+		nextBreakpoint = Math.abs( (resources.population.amount-Math.floor(resources.population.amount)) / popPS );
+	}
+	
+	if(newPop >= 1) {
+		while(newPop >= 1) {
+			gameVars.popCount++;
+			if(!gameVars.people) {gameVars.people = [];}
+			gameVars.people.push(new Person(true));
+			resources.food.addSink(0.3,1,'population',true);
 			switch (gameVars.popCount) {
 				case 2:
 					logMessage('Another stranger arrives wanting warmth.');
@@ -457,9 +531,23 @@ function updatePopulation () { //returns time until next breakpoint
 					logMessage('Another stranger appears, craving companionship.');
 					break;
 			}
-			
+			newPop--;
+		}
+	} else if(newPop < 0) {
+		let removePop = Math.abs(Math.floor(newPop)); //e.g. -0.1 turns into -1, then into 1. B/c 9.9 pop still reads as 9 pop.
+		//TODO: Reframe this so we can display 10 pop until it reaches 9. Might be hard/annoying?
+		//Oh! Could this be done by adding 0.5 to the population cap?
+		while (removePop > 0) {
+			let deadGuy = gameVars.people.splice(Math.floor(Math.random()*gameVars.popCount),1);
+			logMessage(`${deadGuy[0].name} has starved to death.`);
+			deadGuy[0].die();
+			resources.food.removeSink(0.3,1,'population');
+			gameVars.popCount--;
+			removePop--;
 		}
 	}
+	
+	if(nextBreakpoint === 0) {nextBreakpoint = Infinity;}
 	return nextBreakpoint;
 }
 
@@ -473,6 +561,7 @@ function saveGame () {
 		buildings[name].save();
 	}
 	console.log('Game saved!');
+	
 	//TODO: Update fleeting header with no transition and opacity, then update its transition and opacity again.
 	clearTimeout(saveInterval);
 	saveInterval = setTimeout(saveGame,gameVars.saveInterval*1000);
@@ -483,7 +572,8 @@ function createTooltip () {
 	let tooltip = document.querySelector('.tooltip');
 	tooltip.description = document.createElement('div');
 	tooltip.cost = document.createElement('div');
-	tooltip.append(tooltip.description,tooltip.cost);
+	tooltip.effects = document.createElement('div');
+	tooltip.append(tooltip.description,tooltip.cost,tooltip.effects);
 	tooltip.style.display = 'none';
 	tooltip.active = false;
 	return tooltip;
@@ -495,9 +585,12 @@ function setupTooltip (hover, source) {
 		hover.addEventListener('mouseover', () => {
 			tooltip.source = source;
 			updateTooltip();
+			//TODO: Highlight relevant costs
 			let rect = hover.getBoundingClientRect();
 			tooltip.style.left = `calc(${rect.right}px + 0.75em)`;
 			tooltip.style.top = `calc(${rect.top}px + 0.5em)`;
+			//TODO: Change this for thin screens to be... below?
+			//https://stackoverflow.com/questions/31511001/is-there-a-javascript-equivalent-to-using-media-query
 			tooltip.style.display = 'block';
 			tooltip.active = true;
 		});
@@ -512,9 +605,35 @@ function setupTooltip (hover, source) {
 }
 
 function updateTooltip () {
-	//TODO: Hide parts if no content. Also add lines eventually?
-	updateText(tooltip.description,tooltip.source.description);
-	updateText(tooltip.cost,tooltip.source.cost);
+	let visible = false;
+	if(tooltip.source.description) {
+		updateText(tooltip.description,tooltip.source.description);
+		tooltip.description.style.display = 'block';
+		visible = true;
+	} else {
+		tooltip.description.style.display = 'none';
+	}
+	//TODO: Format these?
+	if(tooltip.source.cost) {
+		//updateText(tooltip.cost,tooltip.source.cost);
+		tooltip.cost.innerHTML = tooltip.source.cost;
+		tooltip.cost.style.display = 'block';
+		visible = true;
+	} else {
+		tooltip.cost.style.display = 'none';
+	}
+	if(tooltip.source.effects) {
+		updateText(tooltip.effects,tooltip.source.effects);
+		tooltip.effects.style.display = 'block';
+		visible = true;
+	} else {
+		tooltip.effects.style.display = 'none';
+	}
+	if(visible) {
+		tooltip.style.opacity = 1;
+	} else {
+		tooltip.style.opacity = 0;
+	}
 }
 
 function updateText (elmnt, txt) { //this is to get around textContent deleting children.
@@ -584,7 +703,7 @@ function displayNumber (number, type='') {
 				txt = 'lots' + ((type.includes('of')) ? ' of' : '');
 			} else if(number <= 25) {
 				txt = 'a ton' + ((type.includes('of')) ? ' of' : '');
-			} else if(number <= 30) {
+			} else if(number <= 35) {
 				txt = 'enough';
 			} else {
 				txt = 'too many';
@@ -610,7 +729,7 @@ function displayNumber (number, type='') {
 				txt = 'lots' + ((type.includes('of')) ? ' of' : '');
 			} else if(number <= 25) {
 				txt = 'a ton' + ((type.includes('of')) ? ' of' : '');
-			} else if(number <= 30) {
+			} else if(number <= 35) {
 				txt = 'enough';
 			} else {
 				txt = 'too much';
@@ -621,3 +740,22 @@ function displayNumber (number, type='') {
 	return txt;
 }
 
+function displayTime (seconds) {
+	//I think we assume Time has been researched
+	if(seconds < 60) {
+		return `${displayNumber(seconds,'discrete of')} seconds`;
+	} else {
+		let minutes = seconds/60;
+		if(minutes < 60) {
+			return `${displayNumber(minutes,'discrete of')} minutes`;
+		} else {
+			let hours = minutes/60;
+			if(hours < 24) {
+				return `${displayNumber(hours,'discrete of')} hours`;
+			} else {
+				let days = hours/24;
+				return `${displayNumber(days,'discrete of')} days`;
+			}
+		}
+	}
+}

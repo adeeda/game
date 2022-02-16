@@ -24,8 +24,7 @@ class Resource {
 		this.bar.append(this.txtName,this.txtAmount,this.txtCap,this.txtRate);
 		
 		this.tooltip = {
-			description: '',
-			cost: ''
+			description: ''
 		};
 		setupTooltip(this.txtRate,this.tooltip);
 	}
@@ -56,9 +55,9 @@ class Resource {
 			if(science.foresight.researched) {
 				//TODO: Display time
 				if(rps > 0) {
-					this.tooltip.cost = `Time to cap: ${displayNumber(this.getNextBreakpoint(),'discrete of')} seconds`;
+					this.tooltip.cost = `Time to cap: ${displayTime(this.getNextBreakpoint())}`;
 				} else if(rps < 0) {
-					this.tooltip.cost = `Time to zero: ${displayNumber(this.getNextBreakpoint(),'discrete of')} seconds`;
+					this.tooltip.cost = `Time to zero: ${displayTime(this.getNextBreakpoint())}`;
 				} else {
 					this.tooltip.cost = '';
 				}
@@ -102,6 +101,8 @@ class Resource {
 		}
 	}
 	
+	//TODO: Remove number argument for these methods? Then introduce a reduce() method for mechanisms?
+	
 	// FUNCTIONS CALLED BY MECHANISMS
 	addSource (plusRps, number, mechanism, unstoppable=false) {
 		this.income += plusRps*number;
@@ -128,6 +129,8 @@ class Resource {
 	addMultiplier (multiplier, mechanism) {
 		this.multiplier *= multiplier;
 		//TODO: Update if mechanism is already here
+		// for(let i=1,l=this.multipliers.length; i<l; i+=2) {
+			// if(
 		this.multipliers.push(multiplier,mechanism);
 	}
 	removeMultiplier (multiplier, mechanism) {
@@ -214,6 +217,7 @@ class Tab {
 	
 	unlock() {
 		this.tab.style.display = 'inline-block';
+		this.visible = true;
 	}
 	
 	activate() {
@@ -221,6 +225,30 @@ class Tab {
 		let alreadyActive = document.querySelector('#tab-bar > a.active');
 		if(alreadyActive) {document.querySelector('#tab-bar > a.active').setAttribute('class','');}
 		this.tab.setAttribute('class','active');
+	}
+}
+
+class Section {
+	constructor (name, father, visible=false, active=false) {
+		this.name = name;
+		this.visible = visible;
+		
+		this.pane = document.createElement('section');
+		if(!visible) {this.pane.style.display = 'none';}
+		father.append(this.pane);
+		
+		this.header = document.createElement('h2');
+		updateText(this.header,name);
+		this.pane.append(this.header);
+	}
+	
+	unlock() {
+		this.pane.style.display = 'inline-block';
+		this.visible = true;
+	}
+	
+	collapse() {
+		//? can this be CSS instead?
 	}
 }
 
@@ -337,19 +365,10 @@ class Building extends Button {
 		this.number = 0;
 		this.activeNumber = 0;
 		
-		// this.test = document.createElement('div');
-		// updateText(this.test,'+/-');
-		// this.btn.append(this.test);
-		// button.addEventListener("click", event => {
-			// console.log("Handler for button.");
-			// event.stopPropagation(); //<-- This is the one!
-		  // });
-		
 		this.hide();
 		this.btn.setAttribute('building','');
 		this.tooltip = {
 			description: description,
-			cost: ''
 		};
 		setupTooltip(this.btn,this.tooltip);
 	}
@@ -360,9 +379,23 @@ class Building extends Button {
 	
 	get displayCosts () {
 		let txt = 'Cost:';
+		let biggestTime = 0;
 		for (let i=1; i<this.costs.length; i+=2) {
-			txt += ` ${displayNumber(this.costs[i-1]*costMultiplier**this.number,'of')} ${resources[this.costs[i]].displayName}`;
+			let cost = this.costs[i-1]*costMultiplier**this.number;
+			let res = resources[this.costs[i]];
+			txt += ` ${displayNumber(cost,'of')} ${res.displayName}`;
 			txt += (i===this.costs.length-1) ? '' : ',' ;
+			if (res.amount < cost) {
+				if (res.rps > 0) {
+					let newTime = (cost - res.amount) / res.rps;
+					if(newTime > biggestTime) {biggestTime=newTime;}
+				} else {
+					biggestTime = Infinity;
+				}
+			}
+		}
+		if(science.mathematics.researched && biggestTime > 0 && biggestTime < Infinity) {
+			txt += `<br>Ready in ${displayTime(biggestTime)}`;
 		}
 		return txt;
 	}
@@ -415,7 +448,7 @@ class Building extends Button {
 		}
 		if(ok && actual > 0) {
 			this.show();
-			updateText(this.main,`${this.displayName} ` + ((this.activeNumber < this.number) ? `(${this.activeNumber}/${this.number})` : `(${this.number})`));
+			updateText(this.main,`${this.displayName} ` + ((this.activeNumber < this.number) ? `(${displayNumber(this.activeNumber,'discrete')}/${displayNumber(this.number,'discrete')})` : `(${displayNumber(this.number,'discrete')})`));
 			if(this.caps) {
 				for (let i=1; i<this.caps.length; i+=2) {
 					resources[this.caps[i]].cap += this.caps[i-1]*actual;
@@ -466,7 +499,7 @@ class Building extends Button {
 		}
 		
 		this.activeNumber -= actual;
-		updateText(this.main,`${this.displayName}` + ((this.activeNumber < this.number) ? `(${this.activeNumber}/${this.number})` : `(${this.number})`));
+		updateText(this.main,`${this.displayName} ` + ((this.activeNumber < this.number) ? `(${displayNumber(this.activeNumber,'discrete')}/${displayNumber(this.number,'discrete')})` : `(${displayNumber(this.number,'discrete')})`));
 	}
 	
 	save() {
@@ -490,7 +523,7 @@ class Building extends Button {
 
 class Science extends Button {
 	constructor (name, prereqs, costs, description, message) {
-		super(name, name, tabs.science.pane, () => {
+		super(name, name, sections.newScience.pane, () => {
 			//when button is pressed
 			if(!this.disabled) {
 				let ok = true;
@@ -509,6 +542,7 @@ class Science extends Button {
 					if(message) {
 						logMessage(message);
 					}
+					checkScienceFlags(this.name);
 				}
 			}
 		});
@@ -522,7 +556,6 @@ class Science extends Button {
 		if(description || costs) {
 			this.tooltip = {
 				description: description,
-				cost: ''
 			};
 			setupTooltip(this.btn,this.tooltip);
 		}
@@ -567,8 +600,23 @@ class Science extends Button {
 	get displayCosts () {
 		if(this.costs) {
 			let txt = 'Cost:';
+			let biggestTime = 0;
 			for (let i=1; i<this.costs.length; i+=2) {
-				txt += ` ${displayNumber(this.costs[i-1],'of')} ${resources[this.costs[i]].displayName}`;
+				let cost = this.costs[i-1];
+				let res = resources[this.costs[i]];
+				txt += ` ${displayNumber(cost,'of')} ${res.displayName}`;
+				txt += (i===this.costs.length-1) ? '' : ',' ;
+				if (res.amount < cost) {
+					if(res.rps > 0) {
+						let newTime = (cost - res.amount) / res.rps;
+						if(newTime > biggestTime) {biggestTime = newTime;}
+					} else {
+						biggestTime = Infinity;
+					}
+				}
+			}
+			if(science.mathematics.researched && biggestTime > 0 && biggestTime < Infinity) {
+				txt += `<br>Available in ${displayTime(biggestTime)}`;
 			}
 			return txt;
 		} else {
@@ -607,49 +655,54 @@ class Job {
 		updateText(this.minus,'-');
 		
 		this.div.append(this.txt,this.txtCount,this.plus,this.minus);
-		tabs.government.pane.append(this.div);
+		sections.jobs.pane.append(this.div);
 		
 		this.plus.addEventListener('click', () => {
-			this.increase(1);
+			for( let i=0; i<gameVars.popCount; i++ ) {
+				if(gameVars.people[i].job === 'idle') {
+					gameVars.people[i].assignJob(this.name);
+					break;
+				}
+			}
 		});
 		
 		this.minus.addEventListener('click', () => {
-			this.decrease(1);
+			for( let i=0; i<gameVars.popCount; i++ ) {
+				if(gameVars.people[i].job === this.name) {
+					gameVars.people[i].assignJob('idle');
+					break;
+				}
+			}
 		});
 		
 		//TODO: Tooltip if logistics
-		this.tooltip = {
-			description: this.name,
-			cost: ''
-		};
-		setupTooltip(this.txt,this.tooltip);
+		// this.tooltip = {
+			// description: this.name,
+		// };
+		// setupTooltip(this.txt,this.tooltip);
 	}
 	
-	increase (by=1, isCreating=false) {
-		let actual = (gameVars.jobs.idle > by || isCreating) ? by : gameVars.jobs.idle;
-		if(actual === 0) {return false;} else {
+	increase (by=1) {
+		if(by >= 1) {
 			for (let i=1; i<this.outputs.length; i+=2) {
-				resources[this.outputs[i]].addSource(this.outputs[i-1],actual,this);
+				resources[this.outputs[i]].addSource(this.outputs[i-1],by,this);
 			}
-			this.count += actual;
-			gameVars.jobs[this.name] = this.count;
-			if(!isCreating) {
-				gameVars.jobs.idle -= actual;
-			}
+			this.count += by;
 			updateText(this.txtCount,`${displayNumber(this.count,'discrete')}`);
+		} else {
+			return false;
 		}
 	}
 	
 	decrease (by=1) {
-		let actual = (this.count > by) ? by : this.count;
-		if(actual === 0) {return false;} else {
+		if(by >= 1) {
 			for (let i=1; i<this.outputs.length; i+=2) {
-				resources[this.outputs[i]].removeSource(this.outputs[i-1],actual,this);
+				resources[this.outputs[i]].removeSource(this.outputs[i-1],by,this);
 			}
-			this.count -= actual;
-			gameVars.jobs[this.name] = this.count;
-			gameVars.jobs.idle += actual;
+			this.count -= by;
 			updateText(this.txtCount,`${displayNumber(this.count,'discrete')}`);
+		} else {
+			return false;
 		}
 	}
 	
@@ -662,7 +715,7 @@ class Job {
 			}
 		}
 		if(this.visible) {
-			if(gameVars.jobs.idle <= 0) {
+			if(gameVars.idle <= 0) {
 				this.plus.disabled = true;
 			} else {
 				this.plus.disabled = false;
@@ -682,13 +735,77 @@ class Job {
 		this.plus.style.display = 'block';
 		this.minus.style.display = 'block';
 	}
+}
+
+class Person {
+	constructor (creation=false) {
+		this.name = 'Default Name';
+		this.age = Math.random()*6+16;
+		
+		if(creation) {
+			if(science.thought.researched) {
+				this.job = 'gatherer';
+				jobs.gatherer.increase(1);
+			} else {
+				this.job = 'idle';
+				gameVars.idle++;
+			}
+			this.div = document.createElement('div');
+			sections.population.pane.append(this.div);
+			this.assignName();
+		}
+	}
+	
+	//TODO: adjust job effectiveness based on mastery and stats
+	assignJob (job) {
+		if(this.job === 'idle') {
+			gameVars.idle--;
+		} else {
+			jobs[this.job].decrease(1);
+		}
+		if(job === 'idle') {
+			gameVars.idle++;
+		} else {
+			jobs[job].increase(1);
+		}
+		this.job = job;
+	}
+	
+	assignName () {
+		if(names.length > 0) {
+			this.name = `${names[Math.floor(Math.random()*names.length)]} ${surnames[Math.floor(Math.random()*surnames.length)]}`;
+			updateText(this.div,this.name);
+			return true;
+		} else {
+			//fallback data 1/10th the size
+			this.name = `${fallbackNames[Math.floor(Math.random()*1000)]} ${fallbackSurnames[Math.floor(Math.random()*1620)]}`;
+			updateText(this.div,this.name);
+			return false;
+		}
+	}
+	
+	tick (time) {
+		this.age += time/simSpeed/365;
+		//TODO: increase job mastery
+		//if(this.age*Math.random() > 65) {this.reincarnate();} //Probably too often
+	}
+	
+	die () {
+		if(this.job === 'idle') {
+			gameVars.idle--;
+		} else {
+			jobs[this.job].decrease(1);
+		}
+		//TODO: delete this.div
+	}
 	
 	load () {
-		if(gameVars.jobs[this.name]) {
-			this.increase(gameVars.jobs[this.name],true);
-		} else {
-			gameVars.jobs[this.name] = 0;
+		if(this.job !== 'idle') {
+			jobs[this.job].increase(1);
 		}
+		this.div = document.createElement('div');
+		sections.population.pane.append(this.div);
+		updateText(this.div,this.name);
 	}
 }
 
